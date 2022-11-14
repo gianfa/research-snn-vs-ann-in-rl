@@ -1,3 +1,5 @@
+poetry.lock
+
 **/data/*
 .vscode
 notes.md

@@ -7,13 +7,15 @@ authors = ["gianfa <gian.angelini@hotmail.com>"]
 [tool.poetry.dependencies]
 python = ">=3.9,<3.9.7 || >3.9.7,<4.0"
 
+matplotlib = "^3.5.3"
 numpy = "^1.23.2"
 pandas = "^1.4.4"
-matplotlib = "^3.5.3"
 snntorch = "^0.5.3"
 torchvision = "^0.13.1"
+networkx = "^2.8.7"
 
 [tool.poetry.dev-dependencies]
+pytest = "^7.2.0"
 flake8 = "^5.0.4"
 jupyter = "^1.0.0"
 black = "^22.8.0"
