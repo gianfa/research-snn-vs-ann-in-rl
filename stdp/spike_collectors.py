@@ -1,5 +1,6 @@
-"""
+""" Spike Collectors
 
+Here the rules of collecting spikes from raster plot pairs are defined
 """
 import torch
 
@@ -37,7 +38,7 @@ def nearest_pre_post_pair(
     It's just everything the same.
 
     """
-    EXCLUSION_VALUE = 1e4
+    EXCLUSION_VALUE = 1e4  # a trick to exclude previous pre spks in diffs.
     tpre_tpost = []
 
     if not pre_raster.any() or not post_raster.any():
@@ -64,3 +65,10 @@ def nearest_pre_post_pair(
         breakpoint()
         tpre_tpost.append((elected_id, post_spk_id))
     return tpre_tpost
+
+
+def all_to_all(
+    pre_raster: torch.Tensor,
+    post_raster: torch.Tensor,
+    v: bool = False,
+) -> torch.Tensor: ...

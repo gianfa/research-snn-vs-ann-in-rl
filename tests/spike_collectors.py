@@ -116,3 +116,7 @@ def test__nearest_pre_post_pair():
     post_raster = raster_both_2x_1dt[1, :]
     spks = nearest_pre_post_pair(pre_raster, post_raster, v=True)
     assert spks == expected_spks
+
+
+def test__all_to_all():
+    ...
