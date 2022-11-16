@@ -143,57 +143,7 @@ def stdp_step(
                     print("")
 
         elif dw_rule in ["nearest_pre_post_spikes"]:
-            """
-            Focused on post synaptic, if no post spikes occur ignore.
-            For each post spike:
-               choose the nearest pre spike
-               delete it with all previous ones.
-
-            Example:
-                given the followin raster from n0 and n1,
-                    n0: [1, 1, 0, 0, 1, 0, 0, 1]
-                    n1: [0, 0, 1, 0, 0, 0, 1, 0],
-                where n0 is presynaptic and n1 is postsynaptic,
-                1. select the first spike in n1,
-                2. in n0, take the spike closest to the one from n1
-
-            """
-            dw_ij = 0
-            pre_spks = spks[pre]
-            prev_pre_spk_id = None
-            for post_spk_id_tns in spks[post]:  # for each j-th post spike
-                post_spk_id = post_spk_id_tns.item()
-                pre_post_diffs = pre_spks - post_spk_id
-
-                if prev_pre_spk_id:
-                    pre_post_diffs[:prev_pre_spk_id + 1] = -1e4
-
-                # look for the min (pre - post) negative, if there isn't any
-                # look for the min among the rest.
-                # [ -2, -1, 2, 3 ] -> [-2,-1] -> [1]: ok!
-                # [1, 2 ] -> [] -> [1, 2] -> [1]: ok!
-                elected_diff_id = torch.argmin(pre_post_diffs.abs())
-                elected_diff = pre_post_diffs[elected_diff_id].item()
-                elected_id = post_spk_id + elected_diff
-                dw_ij += T_lu[elected_diff]
-
-                prev_pre_spk_id = elected_id
-
-                # delete unuseful spikes from pre
-            # spks[pre] = torch.where(spks[pre] <= elected_id, 0, spks[pre])
-                # delete unuseful spikes from post: not necessary, since the
-                #   loop is already running over post spikes
-
-                tpre_tpost[pre, post].append((elected_id, post_spk_id))
-                dts_all[pre, post].append(elected_diff)
-                dws_all[pre, post].append(dw_ij)
-
-                # # NOTE: it works, but it dowsn't know how to choose between
-                #       pre and post neurons. It's just everything the same.
-
-                breakpoint()
-
-            # sum all
+            pass
 
     # ## Update the weights ##
     for pre_post, dw in dws.items():

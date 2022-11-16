@@ -7,11 +7,49 @@ import torch
 
 # # Two-neurons #
 
+def all_to_all(
+    pre_raster: torch.Tensor,
+    post_raster: torch.Tensor,
+) -> torch.Tensor:
+    """Collect spikes according to all pre spikes against all post spikes.
+
+    Parameters
+    ----------
+    pre_raster: torch.Tensor
+        The presynaptic neuron raster
+    post_raster: torch.Tensor
+        The postsynaptic neuron raster
+
+    Returns
+    -------
+    torch.Tensor
+        A list of tuples containing the pre-post spike indexes pairs.
+        [(PRE_IDX, POST_IDX)]
+    """
+
+    tpre_tpost = []
+
+    if not pre_raster.any() or not post_raster.any():
+        return tpre_tpost
+
+    pre_idxs = pre_raster.argwhere().flatten()
+    post_idxs = post_raster.argwhere().flatten()
+    idxs_pairs = torch.cartesian_prod(pre_idxs, post_idxs)
+    non_same_idxs_pairs = (idxs_pairs[:, 0] - idxs_pairs[:, 1]).argwhere()
+    idxs_pairs = idxs_pairs[non_same_idxs_pairs].squeeze()
+    assert idxs_pairs.ndim <= 2
+    assert idxs_pairs.shape[-1] == 2
+
+    if idxs_pairs.ndim == 2:
+        tpre_tpost = [(x[0], x[1]) for x in idxs_pairs.tolist()]
+    else:
+        tpre_tpost = [tuple(idxs_pairs.squeeze().tolist())]
+    return tpre_tpost
+
 
 def nearest_pre_post_pair(
     pre_raster: torch.Tensor,
     post_raster: torch.Tensor,
-    v: bool = False,
 ) -> torch.Tensor:
     """ Collect spikes as the nearest pre and post pair
 
@@ -34,9 +72,26 @@ def nearest_pre_post_pair(
 
     Notes
     -----
-    it works, but it dowsn't know how to choose between pre and post neurons.
+    it works, but it doesn't know how to choose between pre and post neurons.
     It's just everything the same.
 
+    Parameters
+    ----------
+    pre_raster: torch.Tensor
+        The presynaptic neuron raster
+    post_raster: torch.Tensor
+        The postsynaptic neuron raster
+
+    Returns
+    -------
+    torch.Tensor
+        A list of tuples containing the pre-post spike indexes pairs.
+        [(PRE_IDX, POST_IDX)]
+
+    Returns
+    -------
+    torch.Tensor[Tuple[int]]:
+        spike index pairs from pre to post as (PRE_IDX, POST_IDX)
     """
     EXCLUSION_VALUE = 1e4  # a trick to exclude previous pre spks in diffs.
     tpre_tpost = []
@@ -62,13 +117,5 @@ def nearest_pre_post_pair(
         elected_id = post_spk_id + elected_diff
 
         prev_pre_spk_id = elected_diff_id
-        breakpoint()
         tpre_tpost.append((elected_id, post_spk_id))
     return tpre_tpost
-
-
-def all_to_all(
-    pre_raster: torch.Tensor,
-    post_raster: torch.Tensor,
-    v: bool = False,
-) -> torch.Tensor: ...
