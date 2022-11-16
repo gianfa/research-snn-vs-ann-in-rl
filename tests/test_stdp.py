@@ -1,9 +1,7 @@
 """ STDP Tests
 
-$ python -m pytest tests -vv --pdb
+$ python -m pytest tests/test_stdp.py -vv --pdb
 """
-
-# %%
 import sys
 sys.path.append("../")
 
@@ -44,22 +42,21 @@ def test_stdp__2n_prepost_1dt(simple_pre_post_W_A, dw_time_lookup_40):
         [0, 1, 0, 0, 0, 0],
         [0, 0, 1, 0, 0, 0]
     ])
+    expected_W_1t = torch.tensor([
+        [0, W[0, 1] + T_lu[-1]],
+        [W[1, 0] + T_lu[+1], 0]
+    ])
 
     W_1t = stdp_step(
         weights=W,
         connections=A,
         raster=raster_1t,
-        dw_rule="nearest_post_spike",
+        dw_rule="sum",
         bidirectional=True,
         max_delta_t=20,
         inplace=False,
         v=True
     )
-
-    expected_W_1t = torch.tensor([
-        [0, W[0, 1] + T_lu[-1]],
-        [W[1, 0] + T_lu[+1], 0]
-    ])
 
     assert torch.allclose(W_1t, expected_W_1t)
 
@@ -77,7 +74,7 @@ def test_stdp__2n_prepost_0dt(simple_pre_post_W_A, dw_time_lookup_40):
         weights=W,
         connections=A,
         raster=raster_1t,
-        dw_rule="nearest_post_spike",
+        dw_rule="sum",
         bidirectional=True,
         max_delta_t=20,
         inplace=False,
@@ -102,7 +99,7 @@ def test_stdp__2n_prepost_2dt(simple_pre_post_W_A, dw_time_lookup_40):
         weights=W,
         connections=A,
         raster=raster_2t,
-        dw_rule="nearest_post_spike",
+        dw_rule="sum",
         bidirectional=True,
         max_delta_t=20,
         inplace=False,

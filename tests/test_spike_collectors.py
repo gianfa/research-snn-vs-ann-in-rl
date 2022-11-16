@@ -1,6 +1,6 @@
 """ STDP Tests
 
-$ python -m pytest tests/spike_collectors.py -vv --pdb
+$ python -m pytest tests/test_spike_collectors.py -vv --pdb
 """
 
 # %%

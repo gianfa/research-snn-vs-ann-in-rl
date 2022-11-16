@@ -21,6 +21,7 @@ from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 import torch.nn.functional as F
 
+from stdp.spike_collectors import all_to_all
 from stdp.tut_utils import *
 
 sys.path.append("../")
@@ -33,6 +34,10 @@ def stdp_dW(
     tau_minus: float,
     delta_t: Iterable[int],
 ) -> float:
+    """STDP Weight change formula
+
+    $\deltat = t_pre - t_post$
+    """
     dW = torch.zeros(len(delta_t))
     dW[delta_t <= 0] = A_plus * torch.exp(delta_t[delta_t <= 0] / tau_plus)
     dW[delta_t > 0] = -A_minus * torch.exp(-delta_t[delta_t > 0] / tau_minus)
@@ -40,6 +45,8 @@ def stdp_dW(
 
 
 def stdp_generate_dw_lookup(dt_max: int):
+    """
+    """
     T_lu = torch.arange(-dt_max, dt_max)
     A_plus = 0.2
     tau_plus = 5e-3
@@ -51,7 +58,7 @@ def stdp_generate_dw_lookup(dt_max: int):
     return T_lu
 
 
-def stdp_step(
+def stdp_step_old(
     weights: torch.Tensor,
     connections: torch.Tensor,
     raster: torch.Tensor,
@@ -147,6 +154,82 @@ def stdp_step(
 
     # ## Update the weights ##
     for pre_post, dw in dws.items():
+        pre, post = pre_post
+        W[pre, post] = W[pre, post] + dw
+
+    return W
+
+
+def stdp_step(
+    weights: torch.Tensor,
+    connections: torch.Tensor,
+    raster: torch.Tensor,
+    spike_collection_rule: callable = all_to_all,
+    dw_rule: str = "sum",
+    bidirectional: bool = True,
+    max_delta_t: int = 20,
+    inplace: bool = False,
+    v: bool = False,
+) -> torch.Tensor:
+
+    W = weights
+    if not inplace:
+        W = weights.clone()
+    # if connections is not None: (Nearest Neighbors)
+    # (All-to-all)
+    if connections is None:
+        connections = torch.full_like(W, 1)
+
+    if bidirectional:
+        # To consider bidirectional synapses just add the post-pre pairs and
+        #   the rest does not change. The only thing expected is simply to
+        #   see much smaller post-pre weights than pre-post weights
+        pre_post = torch.argwhere(connections != 0).numpy().tolist()
+    else:
+        pre_post = torch.argwhere(connections > 0).numpy().tolist()
+        """Pre-post pairs"""
+
+    T_lu = stdp_generate_dw_lookup(max_delta_t)
+
+    # ## Compute all the dw ##
+    hist = {
+        'tpre_tpost': {},
+        'dts_all': {},  # stores all the `pre`-`post` spikes dt
+        'dws_all': {}  # stores all the `pre`-`post` spikes dw
+    }
+    for pre, post in pre_post:  # neurons id
+        if v:
+            print(f"synapse: {pre} -> {post}")
+        if post == pre:
+            continue
+
+        pre_post_spks = spike_collection_rule(raster[pre, :], raster[post, :])
+
+        # dt_ij = t_pre - t_post
+        dt_ij = (-torch.tensor(pre_post_spks).diff()).flatten().tolist()
+        dw_ij = [T_lu[dt_ij] for dt_ij in dt_ij]
+
+        #  Option 1: sum over all the spikes (Classical Additive)
+        #    ref: eq.2 http://www.scholarpedia.org/article/Spike-timing_dependent_plasticity#Basic_STDP_Model # noqa
+        if dw_rule == "sum":
+            dw_ij = sum(dw_ij)
+        elif dw_rule == "prod":
+            dw_ij = torch.prod(torch.tensor(dw_ij)).item()
+        else:
+            raise ValueError(f"Unknown dw_rule: {dw_rule}")
+
+        hist['tpre_tpost'][pre, post] = pre_post_spks
+        hist['dts_all'][pre, post] = dt_ij
+        hist['dws_all'][pre, post] = dw_ij
+
+        if v:
+            print(f"{pre}, {post}")
+            print(f"dws: {hist['dts_all'][pre, post]}")
+            print(f"dws: {hist['dws_all'][pre, post]}")
+            print("")
+
+    # ## Update the weights ##
+    for pre_post, dw in hist['dws_all'].items():
         pre, post = pre_post
         W[pre, post] = W[pre, post] + dw
 
