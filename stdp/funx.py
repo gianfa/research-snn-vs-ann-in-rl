@@ -3,7 +3,8 @@
 """
 import sys
 import string
-from typing import Iterable, List, Tuple
+from typing import Callable, Dict, Iterable, List, Tuple
+
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
@@ -197,6 +198,7 @@ def stdp_step(
         'dts_all': {},  # stores all the `pre`-`post` spikes dt
         'dws_all': {}  # stores all the `pre`-`post` spikes dw
     }
+
     for pre, post in pre_post:  # neurons id
         if v:
             print(f"synapse: {pre} -> {post}")
@@ -236,11 +238,67 @@ def stdp_step(
     return W
 
 
+def raster_collect_spikes(
+    raster: torch.Tensor,
+    collection_rule: Callable,
+    connections: List[List[int]] or torch.Tensor = None
+) -> Dict[tuple, list]:
+    """Collect spikes from raster according to a collection rule
+
+    Parameters
+    ----------
+    raster : torch.Tensor
+        A raster matrix, where each row is a collection of spikes of a
+        specific neuron, along time steps.
+    collection_rule : Callable
+        A function defining how to collect spikes between presynaptic neuron
+        and postsynaptic one.
+    connections : List[List[int]]ortorch.Tensor, optional
+        Connections matrix. It defines the oriented connections from a 
+        presynaptic neuron to a postsynaptic one, by a `1`.
+        Defaults to None.
+
+    Returns
+    -------
+    Dict[tuple, List(tuple)]
+        {(pre, post): [(pre_spk_1, post_spk_1), ..., (pre_spk_i, post_spk_i)]}
+
+    Raises
+    ------
+    ValueError
+        If conncections is not square.
+    ValueError
+        If connections has not the same number of rows as raster.
+    """
+    raster = torch.Tensor(raster)
+    if connections is None:
+        connections = torch.ones_like(raster)
+    else:
+        connections = torch.Tensor(connections)
+    if connections.shape[0] != connections.shape[1]:
+        raise ValueError("connections must be a square matrix")
+    if connections.shape[0] != raster.shape[0]:
+        raise ValueError(
+            "connections and raster must have the same number of rows, got " +
+            f"{connections.shape[0]} and {raster.shape[0]}"
+        )
+
+    pre_post = torch.argwhere(connections > 0).numpy().tolist()
+
+    spks = {}
+    for pre, post in pre_post:
+        if post != pre:
+            spks[pre, post]= collection_rule(raster[pre, :], raster[post, :])
+    return spks
+
+
 # Graphs #
 
 
 def connections_to_digraph(
-    connections: torch.Tensor, show: bool = True
+    connections: torch.Tensor,
+    show: bool = True,
+    ax: plt.Axes = None
 ) -> nx.MultiDiGraph:
     # TODO: fix position of the neurons
     G = nx.from_numpy_matrix(
@@ -253,11 +311,139 @@ def connections_to_digraph(
     G.edges(data=True)
 
     if show:
-        nx.draw(G, with_labels=True)
+        if ax is None:
+            _, ax = plt.subplots(1, 1)
+        nx.draw(G, with_labels=True, ax=ax)
+        return G, ax
     return G
 
 
 # Visualization #
+
+def get_equispaced_rgbas_from_cmap(
+    n: int,
+    cmap_name: str ='prism'
+) -> List[tuple]:
+    cmap = mpl.cm.get_cmap(cmap_name)
+    return [cmap(i) for i in np.linspace(0, 1, n)]
+
+
+def get_raster_from_spike_positions(
+    spk_pos: Dict[int, Iterable[int]],
+    size: Tuple[int, int]
+) -> List[list]:
+    """ Generate a raster from spike positions
+
+    Example
+    -------
+    >>>spike_positions = {
+    ...    0: [1, 3],
+    ...    2: [2, 4]
+    ...}
+    >>>get_raster_from_spike_positions(spike_positions, size=(3, 5))
+    [
+        [0, 1, 0, 1, 0],
+        [0, 0, 0, 0, 0],
+        [0, 0, 1, 0, 1]
+    ]
+    """
+    spk_pos = dict(sorted(spk_pos.items(), key=lambda x: x[0]))
+    if max(spk_pos.keys()) > size[0]:
+        raise ValueError(
+            f"Neuron number out of size: {max(spk_pos.keys())} > {size[0]}")
+
+    raster = []
+    for row in range(size[0]):
+        if row in spk_pos.keys():
+            if max(spk_pos[row]) > size[1]:
+                raise ValueError(
+                    "Spike position out of size: " +
+                    f"{max(spk_pos[row])} > {size[1]}"
+                )
+            neuron_row = [
+                1 if i in spk_pos[row] else 0 for i in range(size[1])]
+            raster.append(neuron_row)
+        else:
+            raster.append([0] * size[1])
+    return raster
+
+
+def get_spike_positions_from_tpre_tpost(
+    tpre_tpost: List[Iterable[int]],
+    neurons: List[int]
+) -> Dict[int, List[int]]:
+    """Get spike positions from tpre_tpost
+
+    Example
+    -------
+    >>>tpre_tpost = [
+    ...    (0, 2),
+    ...    (2, 2),
+    ...    (4, 5)
+    ...]
+    >>>neurons = [4, 6]
+    >>>get_spike_positions_from_tpre_tpost(tpre_tpost, neurons)
+    {
+        4: [0, 2, 4],
+        6: [2, 5]
+    }
+    """
+    if np.ndim(tpre_tpost) != 2:
+        raise ValueError("tpre_tpost must be a List of Iterables")
+    lengths = set([len(x) for x in tpre_tpost])
+    if len(lengths) != 1:
+        raise ValueError("tpre_tpost must contain tuples of the same size")
+    if len(neurons) > len(tpre_tpost[0]):
+        raise ValueError(
+            f"Neurons number out of size: {max(neurons)} > {len(tpre_tpost)}")
+
+    return {
+        n: list(set([x[i] for x in tpre_tpost])) for i, n in enumerate(neurons)
+    }
+
+
+def get_raster_from_tpre_tpost(
+    tpre_tpost: List[Iterable[int]],
+    neurons: List[int],
+    size: Tuple[int, int] = None
+) -> List[list]:
+    """ Generate a raster from tpre_tpost
+
+    Example
+    -------
+    >>>tpre_tpost = [
+    ...    (0, 2),
+    ...    (2, 2),
+    ...    (4, 5)
+    ...]
+    >>>neurons = [4, 6]
+    >>>get_raster_from_tpre_tpost(tpre_tpost, neurons)
+    [
+        [0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0],
+        [1, 0, 1, 0, 1, 0],
+        [0, 0, 0, 0, 0, 0],
+        [0, 0, 1, 0, 0, 1]
+    ]
+    """
+    if size is None:
+        size = (
+            max(neurons) + 1,
+            max([max(x) for x in tpre_tpost]) + 1
+        )
+    if np.ndim(tpre_tpost) != 2:
+        raise ValueError("tpre_tpost must be a List of Iterables")
+
+    spk_pos = get_spike_positions_from_tpre_tpost(tpre_tpost, neurons)
+    return get_raster_from_spike_positions(
+        spk_pos,
+        size=size
+    )
+
+
+
 
 
 def plot_raster(
@@ -275,20 +461,20 @@ def plot_raster(
 
     Args:
         raster (np.array): A numpy array N x T, where each row represent a
-        distinct neuron time sequence of spikes
+            distinct neuron time sequence of spikes
         dt (Noneorfloat): The time delta of each time step, in seconds.
-        colors (Iterable, optional): A collection of colors, where each
-        element represent the color of a specific neuron raster plot. Defaults
-        to None.
+            colors (Iterable, optional): A collection of colors, where each
+            element represent the color of a specific neuron raster plot. Defaults
+            to None.
         linelengths (Iterable, optional): A collection of line lengths,
-        where each element represents the line length of the spikes of a
-        specific neuron raster plot. Defaults to None.
-        title (str, optional): The title of the plot. Defaults to
-        'Raster plot'.
-        ylabel (str, optional): Y label. Defaults to 'Neuron'.
-        xlabel (str, optional): X label. Defaults to None.
-        show_horizontal_lines (bool, optional): If True show boundary lines
-        between neurons raster plots. Defaults to True.
+            where each element represents the line length of the spikes of a
+            specific neuron raster plot. Defaults to None.
+            title (str, optional): The title of the plot. Defaults to
+            'Raster plot'.
+            ylabel (str, optional): Y label. Defaults to 'Neuron'.
+            xlabel (str, optional): X label. Defaults to None.
+            show_horizontal_lines (bool, optional): If True show boundary lines
+            between neurons raster plots. Defaults to True.
 
     Returns:
         Tuple[List[mpl.collections.EventCollection], plt.Axes]:
@@ -331,3 +517,52 @@ def plot_raster(
     if xlabel is not None and type(xlabel) == str:
         ax.set_xlabel(xlabel)
     return raster_rows, ax
+
+
+def plot_composed_rasters_from_tpre_tpost_groups(
+    tpre_tpost_groups: Dict[tuple, List[Iterable]],
+    groups_colors: List[tuple] = None,
+    size: List[int] = None,  # raster shape
+    lines_alpha = 0.9,  # set transparency to show superimposed ones
+    linelengths: Iterable = None,
+    title: str = "Raster plot",
+    ylabel: str = "Neuron",
+    xlabel: str = None,
+    show_horizontal_lines: bool = True,
+    ax: plt.Axes = None
+) -> plt.Axes:
+    # TODO: adapt interface to plot_raster
+    if type(tpre_tpost_groups) != dict:
+        raise ValueError(f"`tpre_tpost_groups` must be a dict")
+
+    if groups_colors is None:
+        groups_colors = get_equispaced_rgbas_from_cmap(n=len(tpre_tpost_groups))
+
+    #TODO: if size is None: ...
+
+    if linelengths is None:
+        linelengths = [0.5 for _ in range(size[0])]
+
+    if ax is None:
+        _, ax = plt.subplots(1, 1)
+        ax.set_title(title)
+        ax.set_ylabel(ylabel)
+        if xlabel is not None and type(xlabel) == str:
+            ax.set_xlabel(xlabel)
+
+    # Horizontal Lines #
+    if show_horizontal_lines:
+        for ni in range(size[0]):
+            ax.axhline(ni + 0.65, color="gray", linewidth="0.5")
+    
+    for i, neurons in enumerate(tpre_tpost_groups):
+        tpre_tpost = tpre_tpost_groups[neurons]
+        partial_raster = get_raster_from_tpre_tpost(tpre_tpost, neurons, size=list(size))
+        spike_pos = [np.argwhere(row).flatten() for row in partial_raster][::-1]
+        color = [*groups_colors[i][:3], lines_alpha]
+        ax.eventplot(
+            spike_pos,
+            color=[color] * len(partial_raster),
+            linelengths=linelengths
+        )
+    return ax
