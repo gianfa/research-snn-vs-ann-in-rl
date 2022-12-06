@@ -9,7 +9,7 @@ import pytest  # noqa
 from typing import Iterable  # noqa
 import torch  # noqa
 from stdp.funx import stdp_generate_dw_lookup, stdp_step  # noqa
-
+from stdp.spike_collectors import nearest_pre_post_pair
 
 @pytest.fixture
 def simple_pre_post_W_A():
@@ -144,7 +144,8 @@ def test_stdp__2n_prepost_preburst_2t(simple_pre_post_W_A, dw_time_lookup_40):
         weights=W,
         connections=A,
         raster=raster_2t_preburst,
-        dw_rule="nearest_pre_post_spikes",
+        spike_collection_rule=nearest_pre_post_pair,
+        dw_rule="sum",
         bidirectional=True,
         max_delta_t=20,
         inplace=False,
