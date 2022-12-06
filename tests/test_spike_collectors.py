@@ -2,8 +2,6 @@
 
 $ python -m pytest tests/test_spike_collectors.py -vv --pdb
 """
-
-# %%
 import sys
 sys.path.append("../")
 

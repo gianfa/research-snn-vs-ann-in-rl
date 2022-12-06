@@ -28,6 +28,7 @@ def simple_pre_post_W_A():
 
     return W, A
 
+
 @pytest.fixture
 def dw_time_lookup_40():
     return stdp_generate_dw_lookup(40)
