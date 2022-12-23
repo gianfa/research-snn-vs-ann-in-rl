@@ -9,7 +9,7 @@ from sklearn.metrics import (
     accuracy_score, precision_score, f1_score, confusion_matrix
 )
 
-from funx import *
+from .funx import *
 
 class MetricsReport():
     """
