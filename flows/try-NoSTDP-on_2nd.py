@@ -64,7 +64,7 @@ from experimentkit.metricsreport import MetricsReport
 # %% Helper functions
 
 
-def batch_accuracy(data, targets):
+def batch_accuracy(net, data, targets):
     output = net(data.view(batch_size, -1))
     # take idx of the max firing neuron, as the y_pred
     _, idx = output.sum(dim=0).max(dim=1)
@@ -72,8 +72,8 @@ def batch_accuracy(data, targets):
     return acc
 
 
-def print_batch_accuracy(data, targets, train=False):
-    acc = batch_accuracy(data, targets)
+def print_batch_accuracy(net, data, targets, train=False):
+    acc = batch_accuracy(net, data, targets)
 
     if train:
         print(f"Train set accuracy for a single minibatch: {acc*100:.2f}%")

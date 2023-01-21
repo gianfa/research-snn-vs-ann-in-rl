@@ -1,9 +1,11 @@
 # %%
-"""STDP Implementation trials, on LIFs
+"""Implementation trials, on 2ndGen, for comparison
+
+check try-STDP-on_LIF-training
 
 Decription
 ----------
-Contains tests of STDP done on LIF networks.
+
 
 
 References
@@ -37,9 +39,12 @@ Output decoding
 
 import time
 import os
+from typing import Dict, List
+import seaborn as sns
 import snntorch as snn  # noqa
 from snntorch import spikeplot as splt  # noqa
 from snntorch import spikegen  # noqa
+from sklearn.metrics import accuracy_score, precision_score, f1_score, confusion_matrix  # noqa
 
 import torch  # noqa
 import torch.nn as nn  # noqa
@@ -48,15 +53,125 @@ from torchvision import datasets, transforms  # noqa
 
 import matplotlib.pyplot as plt  # noqa
 import numpy as np  # noqa
+import pandas as pd # noqa
 import itertools  # noqa
 
 
 # %% Helper functions
 
 
+class metrics_report():
+    """
+    Examples
+    --------
+    >>> mr = metrics_report()
+    >>> mr.push([1,0,1], [1,1,0])
+    >>> mr.push([1,0,1], [1,1,0])
+    >>> print(len(mr))
+    2
+    >>> m, n = mr.get_metrics(return_names=True)
+
+    # You can easily visualize metrics using pandas
+    >>> import pandas as pd
+    >>> ms, n = mr.get_metrics(return_names=True)
+    >>> pd.DataFrame(ms, columns=n)
+    """
+
+    def __init__(
+        self,
+        feature_names: List[str] = None,
+        target_names: List[str] = None):
+        self.y_pred = []
+        self.y_true = []
+        self.metrics = {
+            'accuracy': [],
+            'precision': [],
+            'f1': [],
+            'n_samples': []
+        }
+        self.feature_names = feature_names
+        self.target_names = target_names
+
+    
+    def __len__(self):
+        return len(self.y_pred)
+
+    # TODO: review and doc
+    # self.get_true_pred()
+    def __getitem__(self, idx):
+        """
+        Returns
+        -------
+        _ : List[Torch.Tenstor]
+            [y_true[idx], y_true[idx]]
+
+
+        Example
+        -------
+        >>> mr[:3][0].shape
+        torch.Size([3, 128])
+        >>> mr[:3][1].shape
+        torch.Size([3, 128])
+        """
+        return [
+            torch.stack(self.y_pred[idx], dim=0),
+            torch.stack(self.y_true[idx], dim=0)]
+        
+
+    def push(self, y_true, y_pred):
+        self.y_true.append(y_true)
+        self.y_pred.append(y_pred)
+        avg = 'macro'
+        if type(y_true) == torch.Tensor:
+            y_true = y_true.detach().numpy()
+        if type(y_pred) == torch.Tensor:
+            y_pred = y_pred.detach().numpy()
+        self.metrics['n_samples'].append(len(y_true))
+        self.metrics['accuracy'].append(accuracy_score(y_true, y_pred))
+        self.metrics['precision'].append(precision_score(y_true, y_pred, average=avg))
+        self.metrics['f1'].append(f1_score(y_true, y_pred, average=avg))
+
+
+    # TODO: slice y_pred & y_true
+
+    def get_metrics(self, return_names: bool=False):
+        if return_names:
+            return (
+                np.stack(list(self.metrics.values()), axis=0).T,
+                list(self.metrics.keys()))
+        return np.stack(list(self.metrics.values()), axis=0).T
+
+    def get_true_pred(self):
+        return (
+            np.stack(self.y_true, axis=0).flatten(),
+            np.stack(self.y_pred, axis=0).flatten())
+    
+    def compute_confusion_matrix(self):
+        yt, yp = self.get_true_pred()
+        labels = None
+        if self.target_names and len(self.target_names)>0:
+            labels = self.target_names
+        cm = confusion_matrix(yt, yp, labels=labels)
+        return cm
+    
+    def plot_confusion_matrix(self):
+        cm = self.compute_confusion_matrix()
+        if self.feature_names and len(self.feature_names)>0:
+            xticklabels = self.feature_names
+        if self.target_names and len(self.target_names)>0:
+            yticklabels = self.target_names
+        fig, ax = plt.subplots(0, 1)
+        sns.heatmap(
+            data=cm,
+            annot=True,
+            xticklabels=xticklabels, yticklabels=yticklabels, ax=ax)
+        return cm
+
+
 def batch_accuracy(data, targets):
     output, _ = net(data.view(batch_size, -1))
-    _, idx = output.sum(dim=0).max(1)
+    # take idx of the max firing neuron, as the y_pred
+    _, idx = output.sum(dim=0).max(dim=1)
     acc = np.mean((targets == idx).detach().cpu().numpy())
     return acc
 
@@ -68,6 +183,20 @@ def print_batch_accuracy(data, targets, train=False):
         print(f"Train set accuracy for a single minibatch: {acc*100:.2f}%")
     else:
         print(f"Test set accuracy for a single minibatch: {acc*100:.2f}%")
+
+
+def print_vars_table(arg_dict: dict, print_title: bool=False) -> None:
+    if print_title:
+        title = "|" + "|".join(
+            [f"{arg_name:^10}" for arg_name in arg_dict.keys()]) + "|"
+        title += "\n|" + "|".join(
+            [f"{'----------':^10}" for arg_name in arg_dict.keys()]) + "|"
+        print(title)
+
+    values = "|" + "|".join(
+            [f"{arg_value:^10}" for arg_value in arg_dict.values()]) + "|"
+    print(values)
+    return None
 
 
 def train_printer(
@@ -124,7 +253,7 @@ num_hidden = 100
 num_outputs = 10
 
 # Temporal Dynamics
-num_steps = 25
+num_steps = 5
 beta = 0.95
 
 
@@ -178,6 +307,7 @@ is also possible to use the spike count in the loss.
 
 num_epochs = 1
 
+mr = metrics_report()
 loss_hist = []
 test_loss_hist = []
 
@@ -202,12 +332,18 @@ for epoch in range(num_epochs):
         for step in range(num_steps):
             loss_val += loss(mem_rec[step], targets)
         
-        if iter_counter % 50 or iter_counter == 0:
-            print("| epoch | iteration | Train loss | b. accuracy |")
-            print("|-------|-----------|------------|")
-        
-        acc = batch_accuracy(data, targets)
-        print(f"| {epoch} | {iter_counter} | {loss_val.item():.3f} | {acc} |")
+
+        # take idx of the max firing neuron, as the y_pred
+        _, y_pred = spk_rec.sum(dim=0).max(dim=1)
+        mr.push(targets, y_pred)
+        iter_results = {
+            'epoch': epoch,
+            'iteration': iter_counter,
+            'loss': f"{loss_val.item():.2f}",
+            'b. accuracy': f"{batch_accuracy(data, targets):.2f}"
+        }
+        print_vars_table(
+            iter_results,iter_counter % 50 == 0 or iter_counter == 0)
 
         # Gradient calculation + weight update
         optimizer.zero_grad()
@@ -217,7 +353,7 @@ for epoch in range(num_epochs):
         # Store loss history for future plotting
         loss_hist.append(loss_val.item())
 
-        # Test set
+        # Validation set
         with torch.no_grad():
             net.eval()
             test_data, test_targets = next(iter(test_loader))
@@ -241,7 +377,7 @@ for epoch in range(num_epochs):
             counter += 1
             iter_counter += 1
 
-print(f"Elapsed time: {time.time() - t_start}s")
+print(f"Elapsed time: {int(time.time() - t_start)}s")
 
 
 # Visualize
@@ -279,4 +415,9 @@ with torch.no_grad():
 
 print(f"Total correctly classified test set images: {correct}/{total}")
 print(f"Test Set Accuracy: {100 * correct / total:.2f}%")
+
+
+ms, ms_ns = mr.get_metrics(return_names=True)
+metrics_hist_df = pd.DataFrame(ms, columns=ms_ns)
+metrics_hist_df
 # %%
