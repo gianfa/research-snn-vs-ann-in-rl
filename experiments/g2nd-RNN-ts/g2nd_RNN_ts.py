@@ -129,28 +129,51 @@ labels = np.arange(len([w1, w2, w3, w4]))
 ws_combinations = list(combinations(labels, 2))
 ncats = len(ws_combinations)
 
+int2oh = lambda i, ncats: np.identity(ncats)[i, :]
+oh2int = lambda oh: np.argwhere(oh).flatten()
+
 labels = ws_combinations
+label2oh_dict = {ws_combinations[i]:int2oh(i, ncats) for i in range(ncats)}
+label2oh = lambda label: label2oh_dict[label]
+oh2label = lambda oh: ws_combinations[oh2int(oh)]
+
+# int2label = {i:ws_combinations[i] for i in range(ncats)}
+# label2int = {wsi: i for i, wsi in int2label.items()}
 
 plot_n_examples(signals, 6)
 # %% Dataset Creation: batching
 
-batches = []
-batches_labels = []
-for i, si_li in enumerate(zip(signals, labels)):
-    si, li = si_li
-    sig_i_b = [] # [batch_0_s1 batch_1_s1, ..., batch_n_s1]
-    for i in range(0, sig_length, batch_size):
-        sig_i_b_i = si[i:min(i + batch_size, len(si))]
-        if len(sig_i_b_i) == batch_size:
-            sig_i_b.append(sig_i_b_i)
-    li_i = [li for _ in sig_i_b]
-    batches.append(sig_i_b)
-    batches_labels.append(li_i)
+def ts_get_batches_and_labels(signals: list, labels: list, batch_size: int):
+    """
+    Examples
+    --------
+    >>> nsignals = 3
+    >>> signals = np.random.rand(100, nsignals)
+    >>> labels = np.arange(nsignals)
+    >>> batches, batches_labels = ts_get_batches_and_labels(
+    ...     signals, labels, 32)
+    """
+    batches = []
+    batches_labels = []
+    for i, si_li in enumerate(zip(signals, labels)):
+        si, li = si_li
+        sig_i_b = [] # [batch_0_s1 batch_1_s1, ..., batch_n_s1]
+        for i in range(0, sig_length, batch_size):
+            sig_i_b_i = si[i:min(i + batch_size, len(si))]
+            if len(sig_i_b_i) == batch_size:
+                sig_i_b.append(sig_i_b_i)
+        li_i = [label2oh(li) for _ in sig_i_b]
+        batches.append(sig_i_b)
+        batches_labels.append(li_i)
+    assert len(batches) == len(signals) == len(batches_labels)
 
-assert len(batches) == len(signals)
-batches = torch.Tensor(np.vstack(batches)).float()
-batches_labels = torch.Tensor(np.vstack(batches_labels))
+    batches = torch.Tensor(np.vstack(batches)).float()
+    batches_labels = torch.Tensor(np.vstack(batches_labels)).int()
+    assert len(batches) == len(batches_labels)
+    return batches, batches_labels
 
+batches, batches_labels = ts_get_batches_and_labels(
+    signals, labels, batch_size)
 plot_n_examples(batches, 6)
 # %% Dataset Creation: load into DataLoaders
 
@@ -179,7 +202,9 @@ train_dataset, valid_dataset, test_dataset = torch.utils.data.random_split(
     signal_ds, (train_count, valid_count, test_count)
 )
 
-train_dl = DataLoader(train_dataset)
+train_dl = DataLoader(train_dataset, shuffle=True)
+valid_dl = DataLoader(valid_dataset, shuffle=True)
+test_dl = DataLoader(test_dataset, shuffle=True)
 
 # # Check
 # for x_i, y_i in train_dl:
@@ -219,15 +244,9 @@ net = Net().to(device)
 loss_fn = nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(net.parameters(), lr=5e-4, betas=(0.9, 0.999))
 
-"""
-    After only one iteration, the loss should have decreased and accuracy
-should have increased.
-"""
-
-
 # %% # Training Loop
 
-num_epochs = 1
+num_epochs = 50
 
 train_mr = MetricsReport()
 valid_mr = MetricsReport()
@@ -241,29 +260,30 @@ for epoch in range(num_epochs):
     iter_counter = 0
 
     # Minibatch training loop
-    for data, targets in iter(train_dl):
-        data = data.to(device)
-        targets = targets.to(device)
+    for Xi, yi in iter(train_dl):
+        Xi = Xi.to(device)
+        yi = yi.to(device)
 
         optimizer.zero_grad() # prepare for the step
 
         # Forward
-        output = net(data.float())
+        output = net(Xi.float())
         # Loss
-        _, y_pred = torch.max(output.data, 1)
-        loss = loss_fn(output, targets)
+        _, yi_pred = torch.max(output.data, 1)
+        loss = loss_fn(output, yi.float())
         # loss.requires_grad = True
         # Backward
         loss.backward() # propagate loss gradient
 
         optimizer.step() # update the parameters
 
-        train_mr.append(targets, y_pred)
+        print(type(yi), type(yi_pred))
+        train_mr.append(oh2int(yi.flatten()), yi_pred)
         iter_results = {
             'epoch': epoch,
             'iteration': iter_counter,
             'loss': f"{loss:.2f}",
-            'b. accuracy': f"{torch.sum(y_pred==targets)/y_pred.shape[0]:.2f}"
+            'b. accuracy': f"{torch.sum(yi_pred==yi)/yi_pred.shape[0]:.2f}"
         }
         print_vars_table(
             iter_results,iter_counter % 50 == 0 or iter_counter == 0)
@@ -345,5 +365,52 @@ train_mr.plot_confusion_matrix(
     title='train Confusion Matrix', fmt=f".1f", normalize='true')
 # valid_mr.plot_confusion_matrix(
 #     title='valid Confusion Matrix', fmt=f".1f", normalize='true')
+
+# %% Test score
+
+test_mr = MetricsReport()
+test_dl_i = iter(test_dl)
+test_loss_hist = []
+with torch.no_grad():
+    for Xi, yi in iter(train_dl):
+        Xi = Xi.to(device)
+        yi = yi.to(device)
+
+        output = net(Xi.float())
+        _, yi_pred = torch.max(output.data, 1)
+
+        loss = loss_fn(output, yi.float())
+
+        # Score computations
+        test_mr.append(oh2int(yi.flatten()), yi_pred)
+        iter_results = {
+            'epoch': epoch,
+            'iteration': iter_counter,
+            'loss': f"{loss:.2f}",
+            'b. accuracy': f"{torch.sum(yi_pred==yi)/yi_pred.shape[0]:.2f}"
+        }
+        print_vars_table(
+            iter_results,iter_counter % 50 == 0 or iter_counter == 0)
+
+        # Store loss history for future plotting
+        test_loss_hist.append(loss.item())
+
+# Plot Loss
+fig = plt.figure(facecolor="w", figsize=(10, 5))
+plt.plot(test_loss_hist)
+plt.title("Test Loss")
+plt.xlabel("Iteration")
+plt.ylabel("Loss")
+plt.show()
 # %%
 
+
+ms, ms_ns = test_mr.get_metrics(return_names=True)
+metrics_hist_df = pd.DataFrame(ms, columns=ms_ns)
+metrics_hist_df
+
+
+test_mr.plot_confusion_matrix(
+    title='train Confusion Matrix', fmt=f".1f", normalize='true')
+# test_mr.plot_confusion_matrix(
+# %%
