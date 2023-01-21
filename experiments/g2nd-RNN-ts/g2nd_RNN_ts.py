@@ -1,26 +1,15 @@
 # %%
 """
-2nd Gen. timeseries classification
+2nd Gen. timeseries Classification
 
 Description
 -----------
 We want to classify the original phases of a given signal.
 X -> RNN -> y
 
-Such a signal is a function of w1, w2, phases
-X_i = s(w1, w2)
-w1 << w2
-The label is a tuple of these phases
-y = (w1, w2)
+- Such a signal is a function of two phases w1, w2: X_i = s(w1, w2); w1 << w2
+- The labels are such phases, encoded as one-hot arrays: y = 1h(w1, w2)
 
-
-Assumptions
------------
-- in a ESN with plasticity, the UL happens automatically while the spikes are
-    propagated through the network, up to the last neurons, if there are any by
-    design, otherwise untill a stop rule is applied.
-- We then leverage a decoder in order to understand the response of the
-    network to specific inputs.
 
 
 
