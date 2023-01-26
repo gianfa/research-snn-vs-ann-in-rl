@@ -92,10 +92,10 @@ batch_size = 64
 data_path = '../../data'
 
 w1 = 2
-w2 = w1 * 7e3
-w3 = 31
-w4 = w1 * 5e3
-sig_length = 1000
+w2 = w1 * 3
+w3 = 4
+w4 = w3 * 3
+sig_length = 500
 
 
 if not os.path.isdir(data_path):
@@ -113,6 +113,9 @@ ws = [w1, w2, w3, w4]
 t = np.arange(sig_length)
 signals = [sig_2w(w1, w2, t) for w1, w2 in combinations(ws, 2)]
 
+plot_n_examples(signals, 6)
+
+
 # Label Encoding
 labels = np.arange(len([w1, w2, w3, w4]))
 ws_combinations = list(combinations(labels, 2))
@@ -129,7 +132,6 @@ oh2label = lambda oh: ws_combinations[oh2int(oh)]
 # int2label = {i:ws_combinations[i] for i in range(ncats)}
 # label2int = {wsi: i for i, wsi in int2label.items()}
 
-plot_n_examples(signals, 6)
 # %% Dataset Creation: batching
 
 def ts_get_batches_and_labels(signals: list, labels: list, batch_size: int):
@@ -182,7 +184,7 @@ class BiPhasicDataset(Dataset):
 signal_ds = BiPhasicDataset(batches, batches_labels)
 signal_dl = DataLoader(signal_ds)
 
-
+# train/valid/test split
 total_count = len(signal_ds)
 train_count = int(0.7 * total_count)
 valid_count = int(0.2 * total_count)
@@ -204,7 +206,7 @@ test_dl = DataLoader(test_dataset, shuffle=True)
 
 # Network Architecture
 input_size = batch_size
-hidden_size = 100
+hidden_size = 10
 output_size = ncats # n combinations
 
 
