@@ -1,21 +1,26 @@
 
 # Contents
-* [Conventions](#conventions)
-* [References](#References)
-* [Training stage](#train)
-* [Questions](#qs)
-* [Assumptions](#assumptions)
-* [Nice to study](#tostudy)
-* [Notes on proj steps](#proj_steps)
+- [Contents](#contents)
+  - [Conventions](#conventions)
+  - [References](#references)
+  - [Training stage](#training-stage)
+    - [Assumptions](#assumptions)
+    - [Sketch](#sketch)
+  - [Questions](#questions)
+  - [Nice to study](#nice-to-study)
+  - [To tidy](#to-tidy)
+    - [Notes on proj steps](#notes-on-proj-steps)
+  - [NEXT](#next)
+  - [TODO](#todo)
 
 
-<div id='conventions'>Conventions</div>
+## Conventions
 
 [Maas, 1996](https://igi-web.tugraz.at/people/maass/psfiles/85a.pdf)
 * 2GNN: 2nd generation neural network
 * 3GNN: 3nd generation neural network
 
-<div id='ref'>References</div>
+## References
 * https://deepai.org/publication/stdp-learning-of-image-patches-with-convolutional-spiking-neural-networks
 
 * [STDP, spikingjelly, official docs](https://spikingjelly.readthedocs.io/zh_CN/latest/activation_based_en/stdp.html)
@@ -29,7 +34,7 @@ https://compneuro.neuromatch.io/tutorials/W2D3_BiologicalNeuronModels/student/W2
 * https://github.com/BrainCog-X/Brain-Cog/issues/26 
 
 
-<div id='train'>Training stage</div>
+## Training stage
 
 STDP
 * is a sort of optimization -> optimizer
@@ -37,7 +42,7 @@ STDP
     - `dw.mean() <= w.mean()*0.05` for 10 times
     - `max iterations = 200`
 
-<div id='assumptions'>Assumptions</div>
+### Assumptions
 - STDP is disjointed from typical 2GNN training
 - same time granularity across all the network
     - each time step is a network step, thus is a STDP step
@@ -59,8 +64,7 @@ STDP
     1. Update neurons membranes (activations)
     2. Udate weights (STDP)
 
-Sketch
-------
+### Sketch
 
 ```python
 dt = 1e-3 # s
@@ -83,7 +87,17 @@ Bulding blocks:
 - spikes collection rules
 - dw rules
 
-<div id='qs'>Questions</div>
+```
+# pseudocode
+foreach t_delta:
+    foreach n_i, n_j in network:
+        select (spk_ni, spk_nj) pairs, spk_ij
+        spk_ij_tdelta = t_spk_nj - t_spk_ni
+        delta_w_ij = sum(STDP_function(spk_ij_tdelta))
+        update w_ij by delta_w_ij
+```
+
+## Questions
 
 1. STDP Optimizer relies on STDP parameters.
     - Can they be learned?
@@ -95,11 +109,11 @@ Bulding blocks:
     * opt2. update time batches. Are effects separable?
 * sol2. Two time scales: one for stimulus (x reception) and one for STDP. If they are equal, then the processes are sync.
 
-3. The update phase of STDP weights covers peaks, weights, and connections. If we consider peaks to be the result of activations, we can also consider STDP in a domain of 2ndGen networks.
+1. The update phase of STDP weights covers peaks, weights, and connections. If we consider peaks to be the result of activations, we can also consider STDP in a domain of 2ndGen networks.
 Using it, however, there are some points to take into account:
 - Based on the activation distance of ....
 
-4. Tut 5 he uses init_leaky(), meaning mem=[], in a forward step.
+1. Tut 5 he uses init_leaky(), meaning mem=[], in a forward step.
 Does this make sense?
 
 Ex.
@@ -113,7 +127,7 @@ for step in steps:
 
 
 
-### <div id='tostudy'>Nice to study</div>
+## Nice to study
 
 * Comparisons
     * computational efficiency comparison applying decomposition to datasets, by:
@@ -129,7 +143,7 @@ for step in steps:
     * Triplet rule
         * >http://www.scholarpedia.org/article/Spike-timing_dependent_plasticity#Triplet_rule_of_STDP
 
-#### To tidy
+## To tidy
 
 What does work?
 * topology
@@ -160,7 +174,7 @@ FC(N2, N3)
 FC(N4, N5)
 
 
-<div id='proj_steps'>Notes on proj steps</div>
+### Notes on proj steps
 ------------------------
 1. Hypothesys formulation: "What if STDP is implemented in snnTorch and we can build mixed DNN?"
 2. Search for code solutions in the web and literature.
@@ -197,3 +211,17 @@ FC(N4, N5)
         * maybe as a multimodal/multithresholded neuron?
             * there are all types neurons in the body, so maybe it can be a moving threshold neuron (driven by freq?)
         * reservoir + decisor neuron?
+
+
+## TODO
+* [] feat(experiments): training monitor
+  - use tqdm to print epochs, accuracy, and other useful stuff
+* [] feat(experiments, reprod): print and store the system info
+* [] feat(experiments, manage): fileSaver
+* [] feat(experiments, manage): fileSaver.
+  * Save exp metadata
+    * timestamp + elapsed
+    * system info
+    * notable veriables (epochs, iterations, description,.. )
+* [] feat(experiments, manage): contributing guidelines
+* [] feat(experiments, manage): user guidelines
