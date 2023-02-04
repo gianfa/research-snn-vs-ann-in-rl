@@ -214,14 +214,14 @@ FC(N4, N5)
 
 
 ## TODO
-* [] feat(experiments): training monitor
+* [] feat(experimentkit): training monitor
+  - monitor
   - use tqdm to print epochs, accuracy, and other useful stuff
-* [] feat(experiments, reprod): print and store the system info
-* [] feat(experiments, manage): fileSaver
-* [] feat(experiments, manage): fileSaver.
+* [] feat(experimentkit, reprod): print and store the system info
+* [] feat(experimentkit, manage): fileSaver
   * Save exp metadata
     * timestamp + elapsed
     * system info
     * notable veriables (epochs, iterations, description,.. )
-* [] feat(experiments, manage): contributing guidelines
-* [] feat(experiments, manage): user guidelines
+* [] feat(experimentkit, manage): contributing guidelines
+* [] feat(experimentkit, manage): user guidelines

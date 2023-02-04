@@ -4,6 +4,19 @@ Description
 ----------
 Contains tests of STDP done on LIF networks.
 
+Notes
+-----
+Here we need to solve the issue about the dynamics of the network with 
+respect to the time of administration of the stimulus (seeing the example)
+and the time of the dynamics of the neuron.
+Coming from the surGrad, the training takes place:
+1. for each example
+2. LIFs are initialized
+3.The dynamics of the LIFs is left to evolve by a delta t.  
+
+This is a problem because the dynamics are reset for each sample, eliminating 
+the "life history" of the neurons, which is useful in the STDP regime. 
+
 
 References
 ----------
