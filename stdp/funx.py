@@ -172,7 +172,49 @@ def stdp_step(
     inplace: bool = False,
     v: bool = False,
 ) -> torch.Tensor:
+    """Simplified STDP step
 
+    It assumes that a group of neurons is indexed by a unique integer.
+
+    Parameters
+    ----------
+    weights : torch.Tensor
+        2D Weights matrix. Each (i, j) position is the weight of the connection
+        between the i-th neuron and the j-th neuron.
+    connections : torch.Tensor
+        2D Connections matrix. Each i-th row is a vector of
+        connections with the other neurons. Each (i, j) position can be:
+        * +1 if the i-th neuron is presynaptic and the j-th neuron is 
+            postsynaptic;
+        * -1 if the i-th neuron is postsynaptic and the j-th neuron is 
+            presynaptic.
+        * 0 if there is no connection between the i-th and the j-th neurons.
+    raster : torch.Tensor
+        2D Raster plot. Each i-th row is a vector of spike
+        traces, j time-steps long.
+    spike_collection_rule : callable, optional
+        Default all_to_all
+    dw_rule : str, optional
+        By default "sum"
+    bidirectional : bool, optional
+        By default True
+    max_delta_t : int, optional
+        By default 20
+    inplace : bool, optional
+        By default False
+    v : bool, optional
+        If true the output will be more verbose. By default False
+
+    Returns
+    -------
+    torch.Tensor
+        _description_
+
+    Raises
+    ------
+    ValueError
+        _description_
+    """    
     W = weights
     if not inplace:
         W = weights.clone()

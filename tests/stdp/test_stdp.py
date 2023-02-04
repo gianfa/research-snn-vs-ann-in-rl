@@ -180,4 +180,5 @@ def test_stdp__2n_prepost_preburst_2t(simple_pre_post_W_A, dw_time_lookup_40):
         [0, 0, 0, 0, 1, 0]
     ])
 
+
 # %%
