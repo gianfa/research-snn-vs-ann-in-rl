@@ -15,7 +15,7 @@ class MetricsReport():
     """
     Examples
     --------
-    >>> mr = metrics_report()
+    >>> mr = MetricsReport()
     >>> mr.append([1,0,1], [1,1,0])
     >>> mr.append([1,0,1], [1,1,0])
     >>> print(len(mr))
@@ -78,6 +78,10 @@ class MetricsReport():
         return copy.deepcopy(self)
 
     def append(self, y_true, y_pred):
+        if np.shape(y_true) != np.shape(y_pred):
+            raise ValueError(
+                "y_true and y_pred must have the same shape. " +
+                f"They were: {y_true.shape} and {y_pred.shape}")
         self.y_true.append(y_true)
         self.y_pred.append(y_pred)
         avg = 'macro'
@@ -110,16 +114,29 @@ class MetricsReport():
         return stats
 
     def get_true_pred(self):
-        return (
-            np.stack(self.y_true, axis=0).flatten(),
-            np.stack(self.y_pred, axis=0).flatten())
+        # check shapes
+        if len(set([len(yi) for yi in self.y_true])) == 1:
+            yt = np.stack(self.y_true, axis=0).flatten()
+        else:
+            yt = np.hstack(self.y_true)
+
+        if len(set([len(yi) for yi in self.y_pred])) == 1:
+            yp = np.stack(self.y_pred, axis=0).flatten()
+        else:
+            yp = np.hstack(self.y_pred)
+
+        return yt, yp
     
-    def compute_confusion_matrix(self, normalize: str =None) -> np.ndarray:
+    def compute_confusion_matrix(
+            self, normalize: str =None, 
+            title: str = "Confusion Matrix") -> np.ndarray:
         yt, yp = self.get_true_pred()
         labels = None
         if self.target_names and len(self.target_names)>0:
             labels = self.target_names
-        return confusion_matrix(yt, yp, labels=labels, normalize=normalize)
+        cm = confusion_matrix(yt, yp, labels=labels, normalize=normalize);
+        plt.gcf().suptitle(title);
+        return cm
     
     def plot_confusion_matrix(
         self,

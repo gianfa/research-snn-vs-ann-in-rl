@@ -30,7 +30,8 @@ import seaborn as sns
 import snntorch as snn  # noqa
 from snntorch import spikeplot as splt  # noqa
 from snntorch import spikegen  # noqa
-from sklearn.metrics import accuracy_score, precision_score, f1_score, confusion_matrix  # noqa
+from sklearn.metrics import ( # noqa
+    accuracy_score, precision_score, f1_score, confusion_matrix)
 import torch  # noqa
 import torch.nn as nn  # noqa
 from torch.utils.data import Dataset, DataLoader, TensorDataset  # noqa
@@ -116,7 +117,7 @@ def train_printer(
 
 # %% Dataset Creation: Signal definition
 
-batch_size: int = 64
+batch_size: int = 32
 
 w1 = 2
 w2 = w1 * 3
@@ -368,7 +369,7 @@ for epoch in range(num_epochs):
         loss_val.backward() # propagate loss gradient
         optimizer.step() # update the parameters
 
-        # train_mr.append(oh2int(yi.flatten()).item, yi_pred.item())
+        train_mr.append(yi_int, yi_pred_int)
         iter_results = {
             'epoch': epoch,
             'iteration': iter_counter,
@@ -391,7 +392,9 @@ for epoch in range(num_epochs):
 
             # Valid set forward pass
             spk_out, mem_out = net(Xi)
-            yi_pred = mem_out.max(dim=0)[0]
+            yi_valid_pred = mem_out.max(dim=0)[0]
+            yi_valid_pred_int = yi_valid_pred.argmax(dim=1)
+            yi_valid_int = yi.argwhere()[:, 1] # form 1-h
 
             # Valid set loss
             loss_valid = torch.zeros((1), dtype=dtype, device=device)
@@ -399,7 +402,7 @@ for epoch in range(num_epochs):
                 loss_valid = loss_valid + loss_fn(mem_out[step], yi.float())
             
             # _, train_y_pred = torch.max(output.data, 1)
-            # train_mr.append(targets, train_y_pred)
+            valid_mr.append(yi_valid_int, yi_valid_pred_int)
             valid_loss_hist.append(loss_valid.item())
 
             # Print train/test loss/accuracy
@@ -423,5 +426,10 @@ plt.legend(["Train Loss", "Valid Loss"])
 plt.xlabel("Iteration")
 plt.ylabel("Loss")
 plt.show()
+
+# %%
+
+train_mr.plot_confusion_matrix(title="Train ConfMat")
+valid_mr.plot_confusion_matrix(title="Valid ConfMat")
 
 # %%
