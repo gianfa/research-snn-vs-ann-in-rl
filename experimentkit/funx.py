@@ -1,5 +1,10 @@
+""" Utility functions 
+
+"""
 import matplotlib.pyplot as plt
 import numpy as np
+import os
+import pickle
 import torch
 
 def compare_sample_from_data(
@@ -23,3 +28,20 @@ def compare_sample_from_data(
         verticalalignment='center', fontsize=25)
         axs[i, 2].axis('off')
     return axs
+
+
+def pickle_save_dict(fpath: str, d: dict) -> str:
+    with open(fpath, "wb") as handle:
+        pickle.dump(d, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+    if not os.path.exists(fpath):
+        raise Exception(f"File '{fpath}' saving failed!")
+    return fpath
+
+
+def pickle_load(fpath: str):
+    if os.path.getsize(fpath) == 0:
+        print(f"The file '{fpath}' is empty")
+    with open(fpath, "rb") as handle:
+        f = pickle.load(handle)
+    return f

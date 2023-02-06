@@ -3,6 +3,7 @@ from typing import List
 
 import torch
 import matplotlib.pyplot as plt
+import pandas as pd
 import numpy as np
 import seaborn as sns
 from sklearn.metrics import (
@@ -94,14 +95,16 @@ class MetricsReport():
         self.metrics['precision'].append(precision_score(y_true, y_pred, average=avg))
         self.metrics['f1'].append(f1_score(y_true, y_pred, average=avg))
 
-    def get_metrics(self, return_names: bool=False):
+    def get_metrics(self, return_names: bool=False, return_frame: bool=False):
+        metrics = np.stack(list(self.metrics.values()), axis=0).T
+        if return_frame:
+            return pd.DataFrame(metrics, columns=list(self.metrics.keys()))
         if return_names:
-            return (
-                np.stack(list(self.metrics.values()), axis=0).T,
-                list(self.metrics.keys()))
-        return np.stack(list(self.metrics.values()), axis=0).T
+            return metrics, list(self.metrics.keys())
+        return metrics
     
-    def get_metrics_stats(self, return_names: bool=False) -> dict:
+    def get_metrics_stats(
+            self, return_names: bool=False, return_frame: bool=False) -> dict:
         metrics, names = self.get_metrics(return_names=True)
         stats = {
             'mean': metrics.mean(axis=0),
@@ -109,6 +112,8 @@ class MetricsReport():
             'min': metrics.min(axis=0),
             'max': metrics.max(axis=0)
         }
+        if return_frame:
+            return pd.DataFrame(stats, columns=names)
         if return_names:
             return (stats, names)
         return stats
@@ -128,15 +133,15 @@ class MetricsReport():
         return yt, yp
     
     def compute_confusion_matrix(
-            self, normalize: str =None, 
-            title: str = "Confusion Matrix") -> np.ndarray:
-        yt, yp = self.get_true_pred()
+            self, over_all: bool = False, normalize: str =None) -> np.ndarray:
+        if over_all:
+            yt, yp = self.get_true_pred()
+        else:
+            yt, yp = self.y_true[-1], self.y_pred[-1]
         labels = None
         if self.target_names and len(self.target_names)>0:
             labels = self.target_names
-        cm = confusion_matrix(yt, yp, labels=labels, normalize=normalize);
-        plt.gcf().suptitle(title);
-        return cm
+        return confusion_matrix(yt, yp, labels=labels, normalize=normalize);
     
     def plot_confusion_matrix(
         self,
