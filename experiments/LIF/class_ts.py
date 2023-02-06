@@ -49,11 +49,11 @@ from experimentkit.funx import pickle_save_dict
 from stdp.funx import stdp_step
 
 DATA_PATH = '../../data'
+EXP_PREFIX = "hidden_16-td_50"
 EXP_PATHS = {}
 EXP_PATHS['root'] = Path(".")
 EXP_PATHS['imgs'] = EXP_PATHS['root']/"imgs"
 EXP_PATHS['data'] = EXP_PATHS['root']/"data"
-EXP_PREFIX = "hidden_500"
 
 imgs_path = EXP_PATHS['imgs']
 for dir_name, dir_path in EXP_PATHS.items():
@@ -256,10 +256,10 @@ print(
 
 # Network Architecture
 num_inputs = sig_length
-num_hidden = 500
+num_hidden = 1
 num_outputs = ncats # n combinations
 
-num_steps = 5
+n_net_inner_steps = 50
 beta = 0.95
 class Net(nn.Module):
     def __init__(self):
@@ -290,7 +290,7 @@ class Net(nn.Module):
         mem_rec_fw = {nm: [] for nm in self.lif_layers_names}
 
         # Record the layers during inner (spiking) steps
-        for _ in range(num_steps):
+        for _ in range(n_net_inner_steps):
             cur1 = self.fc1(x)
             spk1, mem1 = self.lif1(cur1, mem1)
             cur2 = self.fc2(spk1)
@@ -304,7 +304,7 @@ class Net(nn.Module):
         mem_out = torch.stack(mem_rec_fw['lif2'], dim=0)
 
         # Append the new batch of inner steps to the recs
-        # self.spk_rec [=] (examples, num_steps, num_outputs)
+        # self.spk_rec [=] (examples, n_net_inner_steps, num_outputs)
         for nm in self.lif_layers_names:
             self.spk_rec[nm].append(torch.stack(spk_rec_fw[nm], dim=0))
         for nm in self.lif_layers_names:
@@ -359,7 +359,7 @@ for epoch in range(num_epochs):
         yi = yi.to(device) # [=] (batch_size, ncats)
 
         net.train()
-        # mem_out [=] (num_steps, batch_size, ncats)
+        # mem_out [=] (n_net_inner_steps, batch_size, ncats)
         spk_out, mem_out = net(Xi)
 
         # Let's take the max membrane at time step, as the most probable cat
@@ -371,7 +371,7 @@ for epoch in range(num_epochs):
         # initialize the loss & sum over time
         # Here the loss is a batch loss (1 per batch)
         loss_val = torch.zeros((1), dtype=dtype, device=device)
-        for step in range(num_steps):
+        for step in range(n_net_inner_steps):
             loss_val = loss_val + loss_fn(mem_out[step], yi.float())
 
         # Gradient calculation + weight update
@@ -408,7 +408,7 @@ for epoch in range(num_epochs):
 
             # Valid set loss
             loss_valid = torch.zeros((1), dtype=dtype, device=device)
-            for step in range(num_steps):
+            for step in range(n_net_inner_steps):
                 loss_valid = loss_valid + loss_fn(mem_out[step], yi.float())
             
             # _, train_y_pred = torch.max(output.data, 1)
@@ -423,6 +423,7 @@ for epoch in range(num_epochs):
             counter += 1
             iter_counter += 1
 
+training_time = int(time.time() - t_start)
 print(f"Elapsed time: {int(time.time() - t_start)}s")
 # %% Visualize: Plot Train/Valid Loss
 fig = plt.figure(facecolor="w", figsize=(10, 5))
@@ -445,7 +446,7 @@ for Xi_test, yi_test in iter(test_dl):
     yi_test = yi_test.to(device) # [=] (batch_size, ncats)
 
     with torch.no_grad():
-        # mem_out [=] (num_steps, batch_size, ncats)
+        # mem_out [=] (n_net_inner_steps, batch_size, ncats)
         spk_out, mem_out = net(Xi_test)
 
         # Let's take the max membrane at time step, as the most probable cat
@@ -456,7 +457,7 @@ for Xi_test, yi_test in iter(test_dl):
         # Test set loss
         # Here the loss is a batch loss
         loss_test = torch.zeros((1), dtype=dtype, device=device)
-        for step in range(num_steps):
+        for step in range(n_net_inner_steps):
             loss_test = loss_test + loss_fn(mem_out[step], yi_test.float())
         
         # _, train_y_pred = torch.max(output.data, 1)
@@ -493,8 +494,9 @@ proj_desc = {
     'train_dl-len': len(train_dl.dataset),
     'batch_size': batch_size,
     'num_epochs': num_epochs,
-    'inner_net_delta_t': num_steps,
+    'net_inner_delta_t': n_net_inner_steps,
     'train-metrics': train_mr.get_metrics(return_frame=True).tail(1).to_dict(),
+    'training-time': training_time,
     'test-metrics': test_mr.get_metrics(return_frame=True),
     'net': {
         'neuron_beta': beta
