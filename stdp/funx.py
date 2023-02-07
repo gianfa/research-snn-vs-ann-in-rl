@@ -240,7 +240,6 @@ def stdp_step(
         'dts_all': {},  # stores all the `pre`-`post` spikes dt
         'dws_all': {}  # stores all the `pre`-`post` spikes dw
     }
-
     for pre, post in pre_post:  # neurons id
         if v:
             print(f"synapse: {pre} -> {post}")
@@ -271,7 +270,6 @@ def stdp_step(
             print(f"dws: {hist['dts_all'][pre, post]}")
             print(f"dws: {hist['dws_all'][pre, post]}")
             print("")
-
     # ## Update the weights ##
     for pre_post, dw in hist['dws_all'].items():
         pre, post = pre_post
