@@ -121,6 +121,10 @@ def train_printer(
     print_batch_accuracy(test_data, test_targets, train=False)
     print("\n")
 
+import warnings
+from sklearn.exceptions import UndefinedMetricWarning
+warnings.filterwarnings(action='ignore', category=UndefinedMetricWarning)
+
 
 # %% Dataset Creation: Signal definition
 
@@ -256,7 +260,7 @@ print(
 
 # Network Architecture
 num_inputs = sig_length
-num_hidden = 1
+num_hidden = 10
 num_outputs = ncats # n combinations
 
 n_net_inner_steps = 50
@@ -323,7 +327,7 @@ optimizer = torch.optim.Adam(net.parameters(), lr=5e-4, betas=(0.9, 0.999))
 
 # %% # Training Loop
 
-num_epochs = 200
+num_epochs = 100
 
 train_mr = MetricsReport()
 valid_mr = MetricsReport()
@@ -332,7 +336,7 @@ valid_loss_hist = []
 
 counter = 0
 t_start = time.time()
-dt_stdp = 10
+dt_stdp = 1
 
 get_model_layer_params = lambda layer_name: \
     dict(net.named_parameters())[f'{layer_name}.weight']
@@ -342,17 +346,20 @@ weights = {
     'fc2': [dict(net.named_parameters())[f'fc2.weight'].clone()]
 }
 
-weights_hist = [weights]
-stdp_dt_idxs = []
+weights_hist = {}
+stdp_dt_idxs = {}
 spk2_rec = []
 mem2_rec = []
 counter = 0
+
 
 # loss_monitor = Monitor(
 #     x=range(len(loss_hist)), y=loss_hist, plot_kwargs={'marker': 'x'},
 #     title="Loss", xlabel="# iterations", pause=0.01)
 # Outer training loop
 for epoch in range(num_epochs):
+    weights_hist[epoch] = [get_model_layer_params('fc2')]
+    stdp_dt_idxs[epoch] = []
     iter_counter = 0
 
     # Minibatch training loop
@@ -384,10 +391,19 @@ for epoch in range(num_epochs):
 
         # STDP #
         # CAVEAT: spk_out is already a collection of many iterations
-        if counter > 0 and counter % dt_stdp == 0:
-            steps = (counter - dt_stdp, counter)
+        if iter_counter > 1 and iter_counter % dt_stdp == 0:
             # cur_raster [=] (dt_stdp, batch_size, ncats)
-            cur_raster = spk_out[steps[0]:steps[1]]
+            cur_raster_outer_steps = spk_out[-dt_stdp:]
+            # we now join the outer steps with the inner loop steps
+            contracted_shape = list(cur_raster_outer_steps.shape)
+            contracted_shape = (
+                contracted_shape[0] * contracted_shape[1],
+                *contracted_shape[2:])
+            cur_raster = cur_raster_outer_steps.reshape(contracted_shape)
+            assert cur_raster.ndim == 2
+            print(f"cur_raster: {cur_raster.shape}")
+            if cur_raster.nelement() == 0:
+                f"INFO| epoch: {epoch}| iter: {iter_counter}| raster was empty"
             weights = dict(net.named_parameters())['fc2.weight']
             new_weights=stdp_step(
                 weights=weights,
@@ -406,9 +422,9 @@ for epoch in range(num_epochs):
                     param.data = nn.parameter.Parameter(new_weights.clone())
                     break
             assert torch.allclose(dict(net.named_parameters())['fc2.weight'], new_weights)
-            # store the new weights
-            stdp_dt_idxs.append(step)
-        weights_hist.append(weights)
+            # store the iteration idx and the new weights
+            stdp_dt_idxs[epoch].append(iter_counter)
+        weights_hist[epoch].append(get_model_layer_params('fc2'))
 
         train_mr.append(yi_int, yi_pred_int)
         iter_results = {

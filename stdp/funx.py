@@ -215,6 +215,9 @@ def stdp_step(
     ValueError
         _description_
     """    
+    if raster.ndim != 2:
+        raise ValueError(
+            f"raster.ndim must be 2, instead it's shape is {raster.shape}")
     if raster.nelement() == 0:
         if v: print("stdp_step| Warning: the raster is empty")
         return weights
