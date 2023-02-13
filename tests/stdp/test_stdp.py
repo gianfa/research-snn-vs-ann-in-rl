@@ -1,6 +1,6 @@
 """ STDP Tests
 
-$ python -m pytest tests/test_stdp.py -vv --pdb
+$ python -m pytest tests/stdp/test_stdp.py -vv --pdb
 """
 import sys
 sys.path.append("../")
@@ -32,6 +32,14 @@ def simple_pre_post_W_A():
 @pytest.fixture
 def dw_time_lookup_40():
     return stdp_generate_dw_lookup(40)
+
+
+def test_stdp_generate_dw_lookup():
+    max_dt = 5
+    T_lu = stdp_generate_dw_lookup(max_dt)
+    ks = list(T_lu.keys())
+    expected = list(range(-max_dt, max_dt+1))
+    assert ks == expected
 
 
 def test_stdp__2n_prepost_1dt(simple_pre_post_W_A, dw_time_lookup_40):
@@ -113,6 +121,36 @@ def test_stdp__2n_prepost_2dt(simple_pre_post_W_A, dw_time_lookup_40):
     ])
 
     assert torch.allclose(W_1t, expected_W_2t)
+
+
+def test_stdp__2n_prepost_dt_gt_maxdt(simple_pre_post_W_A, dw_time_lookup_40):
+
+    W, A = simple_pre_post_W_A
+    T_lu = dw_time_lookup_40
+
+    raster_2t = torch.tensor([
+        [0, 1, 0, 0, 0, 0],
+        [0, 0, 0, 0, 1, 0]
+    ])
+
+    msg = "With max distance between spikes greater than max_dt, "
+    W_1t = stdp_step(
+        weights=W,
+        connections=A,
+        raster=raster_2t,
+        dw_rule="sum",
+        bidirectional=True,
+        max_delta_t=2,
+        inplace=False,
+        v=True
+    )
+
+    expected_W_2t = torch.tensor([
+        [0, W[0, 1] + T_lu[-2]],
+        [W[1, 0] + T_lu[+2], 0]
+    ])
+
+    assert torch.allclose(W_1t, expected_W_2t), f"{msg} should not raise error"
 
 
 def test_stdp__2n_prepost_preburst_2t(simple_pre_post_W_A, dw_time_lookup_40):

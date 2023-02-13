@@ -48,7 +48,7 @@ def stdp_dW(
 def stdp_generate_dw_lookup(dt_max: int):
     """
     """
-    T_lu = torch.arange(-dt_max, dt_max)
+    T_lu = torch.arange(-dt_max, dt_max+1)
     A_plus = 0.2
     tau_plus = 5e-3
     A_minus = 0.2
@@ -215,6 +215,9 @@ def stdp_step(
     ValueError
         _description_
     """    
+    if raster.nelement() == 0:
+        if v: print("stdp_step| Warning: the raster is empty")
+        return weights
     W = weights
     if not inplace:
         W = weights.clone()
@@ -249,7 +252,10 @@ def stdp_step(
         pre_post_spks = spike_collection_rule(raster[pre, :], raster[post, :])
 
         # dt_ij = t_pre - t_post
-        dt_ij = (-torch.tensor(pre_post_spks).diff()).flatten().tolist()
+        dt_ij = (-torch.tensor(pre_post_spks).diff()).flatten()
+        dt_ij = torch.where(dt_ij>max_delta_t, max_delta_t, dt_ij)
+        dt_ij = torch.where(dt_ij<-max_delta_t, -max_delta_t, dt_ij)
+        dt_ij = dt_ij.tolist()
         dw_ij = [T_lu[dt_ij] for dt_ij in dt_ij]
 
         #  Option 1: sum over all the spikes (Classical Additive)
