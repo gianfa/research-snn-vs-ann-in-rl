@@ -2,9 +2,11 @@
 
 python -m pytest tests/experimentkit/test_metricsreport.py -vv --pdb
 """
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 
 from experimentkit.metricsreport import MetricsReport
-import matplotlib.pyplot as plt
 
 
 def test_MetricsReport__init():
@@ -59,4 +61,28 @@ def test_MetricsReport__get_true_pred():
 
     assert len(yt) == sum([len(yi) for yi in [y_true, y_true2, y_true3]])
     assert len(yp) == sum([len(yi) for yi in [y_pred, y_pred2, y_pred3]])
+
+
+def test_MetricsReport__get_metrics():
+    mr = MetricsReport()
+
+    # Same shape appended data
+    y_true = [1,0,1]
+    y_pred = [1,1,0]
+    mr.append(y_true, y_pred)
+    y_true2 = [1,1,1]
+    y_pred2 = [0,0,0]
+    mr.append(y_true2, y_pred2)
+    metrics = mr.get_metrics()
+
+    assert type(metrics) == np.ndarray
+
+
+    metrics, metrics_names = mr.get_metrics(return_names=True)
+    assert type(metrics) == np.ndarray
+    assert metrics_names == ['accuracy', 'precision', 'f1', 'n_samples']
+
+    metrics = mr.get_metrics(return_frame=True)
+    assert type(metrics) == pd.DataFrame
+
 
