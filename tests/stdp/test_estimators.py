@@ -53,6 +53,7 @@ def test_define_spiking_cluster():
     assert weights.shape[0] == weights.shape[1]
     assert type(in_ns) == type(out_ns) == list
 
+
 def test_ESN_simple():
     input_size = 1
     hidden_size = 100
@@ -88,6 +89,29 @@ def test_ESN_simple():
     X = torch.linspace(-5, 5, 1000).unsqueeze(1)
     out = esn(X)
     assert out.shape == torch.Size([output_size])
+
+
+def extract_num(n: int = 1, max_int: int = 100):
+    return torch.randint(0, max_int, (1, n)).flatten().tolist()
+
+
+def test_ESN_simple__many_sizes():
+    for _ in range(10):
+        input_size = extract_num(1)[0]
+        hidden_size = extract_num(1)[0]
+        output_size = extract_num(1)[0]
+        spectral_radius = 0.9
+
+        esn = ESN(
+            input_size=input_size,
+            hidden_size=hidden_size,
+            output_size=output_size,
+            spectral_radius=spectral_radius)
+
+        X = torch.linspace(-5, 5, input_size).reshape(1, input_size)
+        out = esn(X)
+        assert out.shape == torch.Size([output_size])
+
 
 def test_ESN_with_hidden_weights():
     input_size = 1

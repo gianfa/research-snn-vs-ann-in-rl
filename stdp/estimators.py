@@ -45,6 +45,9 @@ class ESN(nn.Module):
         self.output_size = output_size
         self.spectral_radius = spectral_radius
 
+        # TODO:
+        #     maybe admit a W_in as a parameter,
+        #     in order to selectively deactivate neurons
         self.W_in = nn.Linear(input_size, hidden_size, bias=False)
         self.W = nn.Linear(hidden_size, hidden_size, bias=False)
         self.W_out = nn.Linear(hidden_size, output_size, bias=False)
@@ -70,12 +73,12 @@ class ESN(nn.Module):
             activation: Callable = torch.tanh) -> torch.Tensor:
         time_length = input.shape[0]
         x = torch.zeros(self.hidden_size)
-
         for t in range(time_length):
             u = input[t]  # current input
             x = activation(self.W_in(u) + self.W(x))  # internal state
-        output = self.W_out(x)
+        output = self.W_out(x) > 0
         return output
+
 
 def define_spiking_cluster(
     tot_neurons: int = 100,
