@@ -45,11 +45,11 @@ from experimentkit.metricsreport import MetricsReport
 from experimentkit.metricsreport import MetricsReport
 from experimentkit.generators.time_series import *
 from experimentkit.monitor import Monitor
-from experimentkit.funx import pickle_save_dict
+from experimentkit.funx import pickle_save_dict, generate_random_name
 from stdp.funx import stdp_step
 
 DATA_PATH = '../../data'
-EXP_PREFIX = "hidden_16-td_50"
+EXP_PREFIX = generate_random_name() + "-hidden_16-td_50"
 EXP_PATHS = {}
 EXP_PATHS['root'] = Path(".")
 EXP_PATHS['imgs'] = EXP_PATHS['root']/"imgs"
@@ -127,7 +127,12 @@ warnings.filterwarnings(action='ignore', category=UndefinedMetricWarning)
 
 
 # %% Dataset Creation: Signal definition
+"""
 
+
+
+
+"""
 batch_size: int = 32
 
 w1 = 2
@@ -135,8 +140,8 @@ w2 = w1 * 3
 w3 = 4
 w4 = w3 * 3
 
-sig_length = 40 # length of the Xi signals
-tot_sig_length = 20 * 40 # length of the parent sig, to be cut to have many Xi
+sig_length = 100 # length of the Xi signals, the sample of it
+tot_sig_length = 30 * sig_length # length of the parent sig, to be cut to have many Xi
 
 
 
@@ -260,10 +265,10 @@ print(
 
 # Network Architecture
 num_inputs = sig_length
-num_hidden = 10
+num_hidden = 100
 num_outputs = ncats # n combinations
 
-n_net_inner_steps = 50
+n_net_inner_steps = 30
 beta = 0.95
 class Net(nn.Module):
     def __init__(self):
@@ -272,14 +277,6 @@ class Net(nn.Module):
         # Initialize layers
         self.fc1 = nn.Linear(num_inputs, num_hidden)
         self.lif1 = snn.Leaky(beta=beta)
-        self.lif1.name = 'lif1'
-        self.fc2 = nn.Linear(num_hidden, num_outputs)
-        self.lif2 = snn.Leaky(beta=beta)
-        self.lif2.name = 'lif2'
-
-        self.lif_layers_names = ['lif1', 'lif2']
-        self.spk_rec = {nm: [] for nm in self.lif_layers_names}
-        self.mem_rec = {nm: [] for nm in self.lif_layers_names}
 
     def forward(self, x):
 
@@ -308,11 +305,22 @@ class Net(nn.Module):
         mem_out = torch.stack(mem_rec_fw['lif2'], dim=0)
 
         # Append the new batch of inner steps to the recs
-        # self.spk_rec [=] (examples, n_net_inner_steps, num_outputs)
         for nm in self.lif_layers_names:
-            self.spk_rec[nm].append(torch.stack(spk_rec_fw[nm], dim=0))
-        for nm in self.lif_layers_names:
-            self.mem_rec[nm].append(torch.stack(mem_rec_fw[nm], dim=0))
+            # self.spk_rec [=] (examples, n_net_inner_steps, num_outputs)
+            sr = torch.stack(spk_rec_fw[nm], dim=0)
+            n_neurons = spk_rec_fw[nm][0].shape[1]
+            sr = torch.swapaxes(sr, 2,1)
+            # sr [=] (outputs, inner_steps * examples)
+            sr = torch.swapaxes(sr, 0,1).view(n_neurons, -1)
+            self.spk_rec[nm].append(sr)
+
+            # self.mem_rec [=] (examples, n_net_inner_steps, num_outputs)
+            mr = torch.stack(mem_rec_fw[nm], dim=0)
+            n_neurons = spk_rec_fw[nm][0].shape[1]
+            mr = torch.swapaxes(mr, 2,1)
+            # mr [=] (outputs, inner_steps * examples)
+            mr = torch.swapaxes(mr, 0,1).view(n_neurons, -1)
+            self.spk_rec[nm].append(mr)
         
         return spk_out, mem_out
 
@@ -342,15 +350,15 @@ get_model_layer_params = lambda layer_name: \
     dict(net.named_parameters())[f'{layer_name}.weight']
 
 # container structures
-weights = {
-    'fc2': [dict(net.named_parameters())[f'fc2.weight'].clone()]
-}
+stpd_layer_name = 'lif2'
+stpd_prev_layer_name = 'lif1'
 
 weights_hist = {}
 stdp_dt_idxs = {}
 spk2_rec = []
 mem2_rec = []
 counter = 0
+epochs_iter_idxs = [] # iteration id of the epoch
 
 
 # loss_monitor = Monitor(
@@ -361,6 +369,7 @@ for epoch in range(num_epochs):
     weights_hist[epoch] = [get_model_layer_params('fc2')]
     stdp_dt_idxs[epoch] = []
     iter_counter = 0
+    epochs_iter_idxs.append(counter)
 
     # Minibatch training loop
     for Xi, yi in iter(train_dl):
@@ -392,22 +401,19 @@ for epoch in range(num_epochs):
         # STDP #
         # CAVEAT: spk_out is already a collection of many iterations
         if iter_counter > 1 and iter_counter % dt_stdp == 0:
-            # cur_raster [=] (dt_stdp, batch_size, ncats)
-            cur_raster_outer_steps = spk_out[-dt_stdp:]
-            # we now join the outer steps with the inner loop steps
-            contracted_shape = list(cur_raster_outer_steps.shape)
-            contracted_shape = (
-                contracted_shape[0] * contracted_shape[1],
-                *contracted_shape[2:])
-            cur_raster = cur_raster_outer_steps.reshape(contracted_shape)
+            # Now we collect the traces coming from both the layers, lif11 
+            #    and lif2, so to have a complete trace.
+            cur_raster = torch.vstack(
+                [net.spk_rec['lif1'][-1], net.spk_rec['lif2'][-1]])
             assert cur_raster.ndim == 2
-            print(f"cur_raster: {cur_raster.shape}")
             if cur_raster.nelement() == 0:
                 f"INFO| epoch: {epoch}| iter: {iter_counter}| raster was empty"
-            weights = dict(net.named_parameters())['fc2.weight']
+            
+            # weights [=] (n_hidden, n_outputs)  
+            weights = dict(net.named_parameters())['fc2.weight'].T
             new_weights=stdp_step(
                 weights=weights,
-                connections=None,
+                connections=None, # <- usable with threshold(weights) to prune
                 raster=cur_raster,
                 # spike_collection_rule=all_to_all,
                 # dw_rule="sum",
@@ -473,14 +479,19 @@ for epoch in range(num_epochs):
 training_time = int(time.time() - t_start)
 print(f"Elapsed time: {int(time.time() - t_start)}s")
 # %% Visualize: Plot Train/Valid Loss
-fig = plt.figure(facecolor="w", figsize=(10, 5))
-plt.plot(loss_hist)
-plt.plot(valid_loss_hist)
-plt.title("Loss Curves")
-plt.legend(["Train Loss", "Valid Loss"])
-plt.xlabel("Iteration")
-plt.ylabel("Loss")
-plt.show()
+
+show_epochs_lines = False
+
+fig, ax = plt.subplots(facecolor="w", figsize=(10, 5))
+ax.plot(loss_hist)
+ax.plot(valid_loss_hist)
+ax.set_title("Loss Curves")
+ax.legend(["Train Loss", "Valid Loss"])
+ax.set_xlabel("Iteration")
+ax.set_ylabel("Loss")
+if show_epochs_lines:
+    for ei in epochs_iter_idxs:
+        ax.axvline(ei, color='grey')
 
 fig.savefig(imgs_path/f"{EXP_PREFIX}-Loss.png")
 
@@ -538,6 +549,7 @@ proj_desc = {
     'label': '',
     'ws': [ws],
     'sig_length': sig_length,
+    'tot_sig_length': tot_sig_length,
     'train_dl-len': len(train_dl.dataset),
     'batch_size': batch_size,
     'num_epochs': num_epochs,

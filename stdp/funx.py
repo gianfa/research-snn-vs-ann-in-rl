@@ -341,6 +341,49 @@ def raster_collect_spikes(
     return spks
 
 
+def model_get_named_layer_params(
+        net, layer_name: str) -> torch.nn.parameter.Parameter:
+    """Get layer weights by name of the layer
+
+    Parameters
+    ----------
+    net : _type_
+        The model
+    layer_name : str
+        The name of the layer in `net`.
+
+    Returns
+    -------
+    torch.nn.parameter.Parameter
+        A tensor with dimensions: (THIS_LAYER_NEURONS, PREV_LAYER_NEURONS)
+    """
+    return dict(net.named_parameters())[f'{layer_name}.weight']
+
+
+# Currently not used
+def model_layers_to_weights(
+        net, names: list) -> Dict[str, torch.nn.parameter.Parameter]:
+    """
+    CAVEAT: Only Sequential models at the moment
+    """
+    # Ws [=] { NAME: (PREV_LAYER_NEURONS, THIS_LAYER_NEURONS) }
+    Ws ={ name: model_get_named_layer_params(net, name).T for name in names}
+    # neurons_per_layer [=] {NAME: THIS_LAYER_NEURONS}
+    neurons_per_layer = {name_i: w_ji.shape[1] for name_i, w_ji in Ws.items()}
+    tot_neurons = sum(list(neurons_per_layer.values()))
+    
+    # layer_to_neurons_map [=] {NAME: (FROM_NEURON_IDX, TO_NEURON_IDX)}
+    layer_to_neurons_map = {}
+    ni = 0
+    for name, nneurons in neurons_per_layer.items():
+        layer_to_neurons_map[name] = (ni, ni + nneurons)
+        ni += nneurons
+    assert ni == tot_neurons, f"More neurons than present have been mapped"
+
+    # M: total weights matrix
+    M = torch.empty_like(tot_neurons, tot_neurons)
+
+
 # Graphs #
 
 
