@@ -32,7 +32,9 @@ class ESN(nn.Module):
             hidden_size: int,
             output_size: int,
             hidden_weights: torch.TensorType = None,
-            spectral_radius=0.9) -> None:
+            input_scaling: float = 1.,
+            # hidden_sparsity: float= 0,
+            spectral_radius=0.95) -> None:
         super(ESN, self).__init__()
         if (
             hidden_weights is not None and 
@@ -44,6 +46,7 @@ class ESN(nn.Module):
         self.hidden_size = hidden_size
         self.output_size = output_size
         self.spectral_radius = spectral_radius
+        self.input_scaling = input_scaling
 
         # TODO:
         #     maybe admit a W_in as a parameter,
@@ -51,12 +54,20 @@ class ESN(nn.Module):
         self.W_in = nn.Linear(input_size, hidden_size, bias=False)
         self.W = nn.Linear(hidden_size, hidden_size, bias=False)
         self.W_out = nn.Linear(hidden_size, output_size, bias=False)
+        for param in self.W_in.parameters():
+            param.requires_grad = False
+        for param in self.W.parameters():
+            param.requires_grad = False
+
+        self.hist = {}  # Last training history object
 
         self.init_weights(hidden_weights)
 
-    def init_weights(self, hidden_weights: torch.TensorType = None) -> None:
+    def init_weights(
+            self,
+            hidden_weights: torch.TensorType or str = "orthogonal") -> None:
         nn.init.orthogonal_(self.W_in.weight)
-        if hidden_weights is None:
+        if hidden_weights is None or hidden_weights == "orthogonal":
             nn.init.orthogonal_(self.W.weight)
         else:
             self.W.weight.data = hidden_weights
@@ -64,19 +75,155 @@ class ESN(nn.Module):
             self.W.weight * (
                 self.spectral_radius / 
                     torch.max(
-                        torch.abs(torch.eig(self.W.weight).eigenvalues))))
+                        torch.abs(
+                            torch.linalg.eig(self.W.weight).eigenvalues))))
+        nn.init.normal_(self.W_out.weight, std=0.01)
+        return None
+
+    def forward(self,
+            input: torch.Tensor,
+            activation: Callable = torch.tanh,
+            dynamic_t_win: int = 1,
+        ) -> torch.Tensor:
+        input *= self.input_scaling
+
+        # Compute Dynamics: Iteratively pass through the input and hidden
+        time_length = input.shape[0]
+        x = torch.zeros(self.hidden_size)
+        # DEBUG
+        # print("--------")
+        # print(f"x.shape: {x.shape}")
+        # print(f"input.shape: {input.shape}")
+        # print(f"self.W_in.shape: {self.W_in.weight.shape}")
+        # print(f"self.W.shape: {self.W.weight.shape}")
+
+        for t in range(time_length):
+            print(f"input[t].shape: {input[t].shape}")
+            u = input[t]  # current input
+            x = activation(self.W_in(u) + self.W(x))  # internal state
+
+        # if dynamic_t_win > input.shape[1]:
+        #     raise ValueError("dynamic_t_win must be <= input cols")
+    
+        # print(dynamic_t_win, time_length, dynamic_t_win)
+        # for t in range(dynamic_t_win, time_length, dynamic_t_win):
+        #     print(f"t: {t}")
+        #     # print(f"input[t].shape: {input[t-dynamic_t_win: t].shape}")
+        #     u = input[t-dynamic_t_win: t]  # current input
+        #     x = activation(self.W_in(u) + self.W(x))  # internal state
+        
+        assert x.sum() != 0, f"The dynamics was skipped. Check the code"
+        # Last activations go to the output
+        output = self.W_out(x)
+        return output
+
+
+    def train(
+            self,
+            X: torch.TensorType,
+            Y: torch.TensorType,
+            epochs: int = 10,
+            optimizer: Callable = torch.optim.SGD,
+            lr: float = 4e-2,
+            criterion: Callable = torch.nn.MSELoss(),
+            activation: Callable = torch.tanh,
+            dynamic_t_win: int = 1,
+            v: bool = False) -> None:
+        # TODO: add hooks for weights storage
+        # perceptron = torch.nn.Linear(X.shape[1], Y.shape[1], bias=False)
+        # criterion = torch.nn.MSELoss()
+        optimizer = optimizer(self.W_out.parameters(), lr=lr)
+        self.hist['losses'] = []
+        for epoch in range(epochs):
+            for X_i, Y_i in zip(X, Y):
+                X_i, Y_i = X_i.to(torch.float32), Y_i.to(torch.float32)
+                if X_i.ndim == 1: X_i = X_i.unsqueeze(0)  # expand as a row
+                if Y_i.ndim == 1: Y_i = Y_i.unsqueeze(0)  # expand as a row
+
+                out = self.__call__(
+                    X_i, activation=activation, dynamic_t_win=dynamic_t_win)
+                loss = criterion(out, Y_i)
+
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+
+                self.hist['losses'].append(loss)
+            if v: print(f"Weights after epoch {epoch}: {self.W_out.weight.data.mean()}")
+
+        if v:
+            try:
+                plt.plot(torch.stack(self.hist['losses']).detach().numpy())
+            except NameError as e:
+                print("WARN| Matplotlib not loaded or missing")
+
+
+
+# DEPRECATED: Here just as bkp
+class ESN_OLD(nn.Module):
+    def __init__(
+            self,
+            input_size: int,
+            hidden_size: int,
+            output_size: int,
+            hidden_weights: torch.TensorType = None,
+            input_scaling: float = 1.,
+            # hidden_sparsity: float= 0,
+            spectral_radius=0.95) -> None:
+        super(ESN, self).__init__()
+        if (
+            hidden_weights is not None and 
+                (
+             hidden_weights.size() != torch.Size((hidden_size, hidden_size)))):
+            raise ValueError(
+                "hidden weights shape must be input_size x hidden_size")
+        self.input_size = input_size
+        self.hidden_size = hidden_size
+        self.output_size = output_size
+        self.spectral_radius = spectral_radius
+        self.input_scaling = input_scaling
+
+        # TODO:
+        #     maybe admit a W_in as a parameter,
+        #     in order to selectively deactivate neurons
+        self.W_in = nn.Linear(input_size, hidden_size, bias=False)
+        self.W = nn.Linear(hidden_size, hidden_size, bias=False)
+        self.W_out = nn.Linear(hidden_size, output_size, bias=False)
+        for param in self.W_in.parameters():
+            param.requires_grad = False
+        for param in self.W.parameters():
+            param.requires_grad = False
+
+        self.init_weights(hidden_weights)
+
+    def init_weights(
+            self,
+            hidden_weights: torch.TensorType or str = "orthogonal") -> None:
+        nn.init.orthogonal_(self.W_in.weight)
+        if hidden_weights is None or hidden_weights == "orthogonal":
+            nn.init.orthogonal_(self.W.weight)
+        else:
+            self.W.weight.data = hidden_weights
+        self.W.weight = nn.Parameter(
+            self.W.weight * (
+                self.spectral_radius / 
+                    torch.max(
+                        torch.abs(
+                            torch.linalg.eig(self.W.weight).eigenvalues))))
         nn.init.normal_(self.W_out.weight, std=0.01)
         return None
 
     def forward(self,
             input: torch.Tensor,
             activation: Callable = torch.tanh) -> torch.Tensor:
+        input *= self.input_scaling
         time_length = input.shape[0]
         x = torch.zeros(self.hidden_size)
         for t in range(time_length):
             u = input[t]  # current input
             x = activation(self.W_in(u) + self.W(x))  # internal state
-        output = self.W_out(x) > 0
+        
+        output = self.W_out(x)
         return output
 
 
