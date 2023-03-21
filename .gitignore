@@ -6,6 +6,7 @@ poetry.lock
 
 **/data/*
 .vscode
+.conda*
 
 ######## MACOS  #######
 
