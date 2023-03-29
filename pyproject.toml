@@ -9,7 +9,7 @@ version = "0.1.0"
 description = "Comparison of economics of choices between SNN and ANN in RL"
 authors = ["gianfa <gian.angelini@hotmail.com>"]
 packages = [
-    {include = "std"},
+    {include = "stdp"},
     {include = "experimentkit"},
 ]
 exclude = [
@@ -46,12 +46,17 @@ streamlit = "*"
 watchdog = "*"
 
 [build-system]
-# https://pip.pypa.io/en/stable/reference/build-system/pyproject-toml/#build-process
-requires = ["setuptools>=40.8.0", "wheel"]
-build-backend = "setuptools.build_meta:__legacy__"
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
 
-[tool.setuptools]
-packages = [
-    "std",
-    "experimentkit"
-]
+
+# [build-system]
+# # https://pip.pypa.io/en/stable/reference/build-system/pyproject-toml/#build-process
+# requires = ["setuptools>=40.8.0", "wheel"]
+# build-backend = "setuptools.build_meta:__legacy__"
+
+# [tool.setuptools]
+# packages = [
+#     "std",
+#     "experimentkit"
+# ]
