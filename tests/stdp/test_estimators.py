@@ -91,8 +91,6 @@ def test_ESN____init__spectral_radius():
             esn.W.weight).eigenvalues.abs().max().item() - sr < 1e4
 
 
-
-
 def gen_int(n: int = 1, max_int: int = 100):
     return torch.randint(1, max_int, (1, n)).flatten().tolist()
 
@@ -112,7 +110,7 @@ def test_ESN_simple__many_sizes():
 
         X = torch.linspace(-5, 5, input_size).reshape(1, input_size)
         out = esn(X)
-        assert out.shape == torch.Size([output_size])
+        assert out.shape == torch.Size([output_size, 1])
 
 
 def test_ESN_with_hidden_weights():
@@ -227,10 +225,46 @@ def test_ESN__train():
         spectral_radius=spectral_radius)
     esn.train(X, Y, v=True)
 
-    # -
+    # Changing training `lr``
     esn = ESN(
         input_size=input_size,
         hidden_size=hidden_size,
         output_size=output_size,
         spectral_radius=spectral_radius)
     esn.train(X, Y, lr=4e0, v=True)
+
+
+def test_ESN__hidden_weights():
+
+    # # Data Generation
+    x, y, sk_coeffs = make_regression(
+        n_samples=50,
+        n_features=5,
+        n_informative=5,
+        n_targets=1,
+        noise=5,
+        coef=True,
+        random_state=1
+    )
+    X = torch.tensor(x)
+    Y = torch.tensor(y).unsqueeze(1)
+
+    for hidden_size in torch.randint(1, int(1e3), (1, 8)).flatten().tolist():
+        # # Define ESN
+        input_size = X.shape[1]
+        output_size = Y.shape[1]
+        spectral_radius = 0.9
+        hidden_weights=torch.eye(hidden_size)
+
+        esn = ESN(
+            input_size=input_size,
+            hidden_size=hidden_size,
+            output_size=output_size,
+            hidden_weights=hidden_weights,
+            spectral_radius=spectral_radius)
+        
+        assert torch.nonzero(esn.W.weight).equal(torch.nonzero(hidden_weights))
+    
+    esn.train(X, Y, v=True)
+
+    # python -m pytest tests/stdp/test_estimators.py -vv --pdb -s -k test_ESN__hidden_weights

@@ -66,6 +66,7 @@ class ESN(nn.Module):
     def init_weights(
             self,
             hidden_weights: torch.TensorType or str = "orthogonal") -> None:
+        # TODO: replace with https://pytorch.org/docs/stable/nn.init.html#torch.nn.init.orthogonal_
         nn.init.orthogonal_(self.W_in.weight)
         if hidden_weights is None or hidden_weights == "orthogonal":
             nn.init.orthogonal_(self.W.weight)
@@ -100,7 +101,7 @@ class ESN(nn.Module):
                 f"The dynamics was skipped (no weights changes). " +
                 "Check the code")
         # Last activations go to the output
-        output = self.W_out(x)
+        output = self.W_out(x).unsqueeze(1)
         return output
 
 
