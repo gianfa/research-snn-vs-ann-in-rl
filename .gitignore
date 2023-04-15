@@ -1,6 +1,10 @@
+
+
 # github repos
 *gh-*
+
 # Experiment dirs
+.conda*
 imgs
 data
 !**/experiments/LIF/data
