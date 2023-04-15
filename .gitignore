@@ -1,5 +1,8 @@
+.conda*
 # github repos
 *gh-*
+
+
 # Experiment dirs
 imgs
 data
