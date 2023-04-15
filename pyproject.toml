@@ -3,6 +3,7 @@ name = "research-snn-vs-ann-in-rl"
 version = "0.1.0"
 description = "Comparison of economics of choices between SNN and ANN in RL"
 authors = ["gianfa <gian.angelini@hotmail.com>"]
+packages = [{include = "stdp"}]
 
 [tool.poetry.dependencies]
 python = ">=3.9,<3.9.7 || >3.9.7,<4.0"
@@ -20,6 +21,7 @@ jupyter = "^1.0.0"
 ipykernel = "^6.20.2"
 daft = "^0.1.2"
 pyqt6 = "^6.4.1"
+tqdm = "^4.64.1"
 
 [tool.poetry.dev-dependencies]
 autopep8 = "^2.0.0"
