@@ -59,9 +59,9 @@ from torchvision import datasets, transforms  # noqa
 
 
 
-from experimentkit.metricsreport import MetricsReport
-from experimentkit.generators.time_series import *
-from experimentkit.monitor import Monitor
+from experimentkit_in.metricsreport import MetricsReport
+from experimentkit_in.generators.time_series import *
+from experimentkit_in.monitor import Monitor
 from stdp.funx import stdp_step
 
 DATA_PATH = '../../data'

@@ -12,7 +12,7 @@ from torch import nn
 from torch.optim.optimizer import Optimizer
 
 from stdp.estimators import ESN
-from experimentkit.visualization import plot_n_examples
+from experimentkit_in.visualization import plot_n_examples
 
 def train(
     model: nn.Module,

@@ -7,6 +7,12 @@ def plot_n_examples(
         X: np.ndarray, n: int, cols: int = 2, labels: List[str] = None):
     """
     
+
+    Arguments
+    ---------
+    X: array-like
+        signals row-wise
+
     Examples
     --------
     >>> X = np.random.rand(10, 100)

@@ -9,7 +9,7 @@ import sys
 import pandas as pd
 
 sys.path.append("../..")
-from experimentkit.funx import pickle_load
+from experimentkit_in.funx import pickle_load
 
 dir_path = "./data"
 name_condition = lambda name: "hidden_" in name and "td_" in name

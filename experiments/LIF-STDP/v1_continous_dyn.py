@@ -77,8 +77,8 @@ import numpy as np  # noqa
 import pandas as pd # noqa
 import itertools  # noqa
 
-from experimentkit.metricsreport import MetricsReport
-from experimentkit.monitor import Monitor
+from experimentkit_in.metricsreport import MetricsReport
+from experimentkit_in.monitor import Monitor
 from stdp.funx import stdp_step
 
 DATA_PATH = '../../data'

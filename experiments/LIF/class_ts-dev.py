@@ -40,12 +40,12 @@ import torch.nn as nn  # noqa
 from torch.utils.data import Dataset, DataLoader, TensorDataset  # noqa
 from torchvision import datasets, transforms  # noqa
 
-from experimentkit.visualization import plot_n_examples
-from experimentkit.metricsreport import MetricsReport
-from experimentkit.metricsreport import MetricsReport
-from experimentkit.generators.time_series import *
-from experimentkit.monitor import Monitor
-from experimentkit.funx import pickle_save_dict
+from experimentkit_in.visualization import plot_n_examples
+from experimentkit_in.metricsreport import MetricsReport
+from experimentkit_in.metricsreport import MetricsReport
+from experimentkit_in.generators.time_series import *
+from experimentkit_in.monitor import Monitor
+from experimentkit_in.funx import pickle_save_dict
 from stdp.funx import stdp_step
 
 DATA_PATH = '../../data'
