@@ -44,7 +44,7 @@ def dw_time_lookup_40():
     return stdp_generate_dw_lookup(40)
 
 
-def SKIP_test_define_spiking_cluster():
+def test_define_spiking_cluster():
     clust = define_spiking_cluster(
         tot_neurons = 100,
     )
@@ -57,7 +57,7 @@ def SKIP_test_define_spiking_cluster():
     assert type(in_ns) == type(out_ns) == list
 
 
-def SKIP_test_ESN_simple():
+def test_ESN_simple():
     input_size = 1
     hidden_size = 100
     output_size = 1
@@ -74,7 +74,7 @@ def SKIP_test_ESN_simple():
     assert out.shape == torch.Size([output_size, 1])
 
 
-def SKIP_test_ESN____init__spectral_radius():
+def test_ESN____init__spectral_radius():
     input_size = 1
     hidden_size = 100
     output_size = 1
@@ -95,7 +95,7 @@ def gen_int(n: int = 1, max_int: int = 100):
     return torch.randint(1, max_int, (1, n)).flatten().tolist()
 
 
-def SKIP_test_ESN_simple__many_sizes():
+def test_ESN_simple__many_sizes():
     for _ in range(10):
         input_size = gen_int(1)[0]
         hidden_size = gen_int(1)[0]
@@ -113,7 +113,7 @@ def SKIP_test_ESN_simple__many_sizes():
         assert out.shape == torch.Size([output_size, 1])
 
 
-def SKIP_test_ESN_with_hidden_weights():
+def test_ESN_with_hidden_weights():
     input_size = 1
     hidden_size = 100
     output_size = 1
@@ -141,7 +141,7 @@ def SKIP_test_ESN_with_hidden_weights():
     assert torch.allclose(hidden_W_zeros.T, torch.tensor(hidden_zeros_pos))
 
 
-def SKIP_test_ESN_simple__trainability():
+def test_ESN_simple__trainability():
     def train(
         model: nn.Module,
         X_y: List[Tuple[torch.TensorType, int]],
@@ -197,7 +197,7 @@ def SKIP_test_ESN_simple__trainability():
     #assert out.shape == torch.Size([output_size])
 
 
-def SKIP_test_ESN__train():
+def test_ESN__train():
 
     # # Data Generation
     x, y, sk_coeffs = make_regression(
@@ -234,7 +234,7 @@ def SKIP_test_ESN__train():
     esn.train(X, Y, lr=4e0, v=True)
 
 
-def SKIP_test_ESN__train_multidim():
+def test_ESN__train_multidim():
 
     # # Data Generation
     x, y, sk_coeffs = make_regression(
@@ -264,7 +264,7 @@ def SKIP_test_ESN__train_multidim():
     esn.train(X, Y, lr=4e0, v=True)
 
 
-def SKIP_test_ESN__train_multibatch():
+def test_ESN__train_multibatch():
 
     # # Data Generation
     x, y, sk_coeffs = make_regression(
