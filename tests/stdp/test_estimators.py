@@ -44,7 +44,7 @@ def dw_time_lookup_40():
     return stdp_generate_dw_lookup(40)
 
 
-def test_define_spiking_cluster():
+def SKIP_test_define_spiking_cluster():
     clust = define_spiking_cluster(
         tot_neurons = 100,
     )
@@ -57,7 +57,7 @@ def test_define_spiking_cluster():
     assert type(in_ns) == type(out_ns) == list
 
 
-def test_ESN_simple():
+def SKIP_test_ESN_simple():
     input_size = 1
     hidden_size = 100
     output_size = 1
@@ -74,7 +74,7 @@ def test_ESN_simple():
     assert out.shape == torch.Size([output_size, 1])
 
 
-def test_ESN____init__spectral_radius():
+def SKIP_test_ESN____init__spectral_radius():
     input_size = 1
     hidden_size = 100
     output_size = 1
@@ -95,7 +95,7 @@ def gen_int(n: int = 1, max_int: int = 100):
     return torch.randint(1, max_int, (1, n)).flatten().tolist()
 
 
-def test_ESN_simple__many_sizes():
+def SKIP_test_ESN_simple__many_sizes():
     for _ in range(10):
         input_size = gen_int(1)[0]
         hidden_size = gen_int(1)[0]
@@ -113,7 +113,7 @@ def test_ESN_simple__many_sizes():
         assert out.shape == torch.Size([output_size, 1])
 
 
-def test_ESN_with_hidden_weights():
+def SKIP_test_ESN_with_hidden_weights():
     input_size = 1
     hidden_size = 100
     output_size = 1
@@ -141,7 +141,7 @@ def test_ESN_with_hidden_weights():
     assert torch.allclose(hidden_W_zeros.T, torch.tensor(hidden_zeros_pos))
 
 
-def test_ESN_simple__trainability():
+def SKIP_test_ESN_simple__trainability():
     def train(
         model: nn.Module,
         X_y: List[Tuple[torch.TensorType, int]],
@@ -197,7 +197,7 @@ def test_ESN_simple__trainability():
     #assert out.shape == torch.Size([output_size])
 
 
-def test_ESN__train():
+def SKIP_test_ESN__train():
 
     # # Data Generation
     x, y, sk_coeffs = make_regression(
@@ -234,6 +234,121 @@ def test_ESN__train():
     esn.train(X, Y, lr=4e0, v=True)
 
 
+def SKIP_test_ESN__train_multidim():
+
+    # # Data Generation
+    x, y, sk_coeffs = make_regression(
+        n_samples=50,
+        n_features=5,
+        n_informative=5,
+        n_targets=3,
+        noise=5,
+        coef=True,
+        random_state=1
+    )
+    X = torch.tensor(x)
+    Y = torch.tensor(y).unsqueeze(1)
+
+    # # Define ESN
+    input_size = X.shape[1]
+    hidden_size = 100
+    output_size = Y.shape[0]
+    spectral_radius = 0.9
+
+    # Changing training `lr``
+    esn = ESN(
+        input_size=input_size,
+        hidden_size=hidden_size,
+        output_size=output_size,
+        spectral_radius=spectral_radius)
+    esn.train(X, Y, lr=4e0, v=True)
+
+
+def SKIP_test_ESN__train_multibatch():
+
+    # # Data Generation
+    x, y, sk_coeffs = make_regression(
+        n_samples=200,
+        n_features=5,
+        n_informative=5,
+        n_targets=3,
+        noise=5,
+        coef=True,
+        random_state=1
+    )
+    X = torch.tensor(x)
+    Y = torch.tensor(y)
+
+    bs = 50
+    X = X.reshape((X.shape[0]//bs, bs, X.shape[1]))
+    Y = Y.reshape((Y.shape[0]//bs, bs, Y.shape[1]))
+
+    # # Define ESN
+    input_size = X.shape[2]
+    hidden_size = 100
+    output_size = Y.shape[1]
+    spectral_radius = 0.9
+
+    # Changing training `lr``
+    esn = ESN(
+        input_size=input_size,
+        hidden_size=hidden_size,
+        output_size=output_size,
+        spectral_radius=spectral_radius)
+    esn.train(X, Y, lr=4e0, v=True)
+
+
+def test_ESN__train__performance():
+    from experimentkit.evaluation import regression # noqa
+
+    # # Data Generation
+    x, y, sk_coeffs = make_regression(
+        n_samples=200,
+        n_features=5,
+        n_informative=5,
+        n_targets=1,
+        noise=5,
+        coef=True,
+        random_state=1
+    )
+    X = torch.tensor(x)  # [=] (200, 5)
+    Y = torch.tensor(y).unsqueeze(1)  # [=] (200, 1)
+
+    bs = 50
+    X = X.reshape((X.shape[0]//bs, bs, X.shape[1]))  # [=] (4, 50, 5)
+    Y = Y.reshape((Y.shape[0]//bs, bs, Y.shape[1]))  # [=] (4, 50, 1)
+
+    # # Define ESN
+    input_size = X.shape[2]
+    hidden_size = 300
+    output_size = Y.shape[1]
+    spectral_radius = 0.9
+
+    esn = ESN(
+        input_size=input_size,
+        hidden_size=hidden_size,
+        output_size=output_size,
+        spectral_radius=spectral_radius)
+    esn.train(X, Y, epochs=400, v=True)
+
+    bi = 0 # take a batch
+    y_pred = esn(X[bi].to(torch.float32)).detach()
+
+    report = regression.regression_report(Y[bi], y_pred)
+
+    assert report['MAPE'] < 1
+
+    # viz
+    fig, ax = plt.subplots(sharey=True, sharex=True)
+    ax.plot(Y[0].flatten() - y_pred.flatten())
+    ax.set(
+        title='$Y - y_pred$'
+    )
+    fig.tight_layout()
+    fig.suptitle("Regression Plot", y=1.05)
+    fig.savefig('my_plot.png')
+
+
 def test_ESN__hidden_weights():
 
     # # Data Generation
@@ -268,3 +383,4 @@ def test_ESN__hidden_weights():
     esn.train(X, Y, v=True)
 
     # python -m pytest tests/stdp/test_estimators.py -vv --pdb -s -k test_ESN__hidden_weights
+

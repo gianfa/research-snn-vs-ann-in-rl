@@ -85,22 +85,28 @@ class ESN(nn.Module):
             input: torch.Tensor,
             activation: Callable = torch.tanh,
         ) -> torch.Tensor:
+        assert input.ndim == 2, (
+            "input must be 2-dimensional: (time, features), " +
+            f"instead dims were {input.ndim}")
         input *= self.input_scaling
 
         # Compute Dynamics: Iteratively pass through the input and hidden
         time_length = input.shape[0]
         x = torch.zeros(self.hidden_size)
         x_0 = x.clone() # storing for diagnosis
-
         for t in range(time_length):
+            # u [=] input.shape[1]
             u = input[t]  # current input
+            # x [=] hidden_size
             x = activation(self.W_in(u) + self.W(x))  # internal state
 
         if bool(input.sum() != 0):
             assert not x.equal(x_0), (
                 f"The dynamics was skipped (no weights changes). " +
                 "Check the code")
+            del x_0
         # Last activations go to the output
+        # output [=] (output.shape, out_features) = (bs, out_features) 
         output = self.W_out(x).unsqueeze(1)
         return output
 
@@ -116,14 +122,17 @@ class ESN(nn.Module):
             activation: Callable = torch.tanh,
             v: bool = False) -> None:
         # TODO: add hooks for weights storage
+        # X [=] (n_batches, bs, in_features)
+        # Y [=] (n_batches, bs, out_features)
         optimizer = optimizer(self.W_out.parameters(), lr=lr)
         self.hist['losses'] = []
         for epoch in range(epochs):
+            outs = []  # [=] n_batches
             for X_i, Y_i in zip(X, Y):
                 X_i, Y_i = X_i.to(torch.float32), Y_i.to(torch.float32)
                 if X_i.ndim == 1: X_i = X_i.unsqueeze(0)  # expand as a row
                 if Y_i.ndim == 1: Y_i = Y_i.unsqueeze(0)  # expand as a row
-
+                # output [=] (output.shape, out_features) = (bs, out_features)
                 out = self.__call__(X_i, activation=activation)
                 loss = criterion(out, Y_i)
 
@@ -132,12 +141,17 @@ class ESN(nn.Module):
                 optimizer.step()
 
                 self.hist['losses'].append(loss)
+                outs.append(out)
             if v:
                 print(
                     f"Weights after epoch {epoch}: " +
                     f"{self.W_out.weight.data.mean()}")
 
+        # output [=] (n_batches, bs, out_features) 
+        outs = torch.stack(outs)
+
         if v:
+            # TODO: move the importModule Error at the start of the fun
             try:
                 fig, ax = plt.subplots()
                 ax.plot(
@@ -150,6 +164,8 @@ class ESN(nn.Module):
                 
             except NameError as e:
                 print("WARN| Matplotlib not loaded or missing")
+        return
+        
 
 
 def define_spiking_cluster(
