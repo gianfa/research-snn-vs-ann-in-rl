@@ -1,16 +1,29 @@
 # %%
-"""  LIFs no STDP
+""" [INCOMPLETE] STDP Implementation trials, on LIFs
 
 Description
 ----------
-Contains tests of images classification by LIF networks.
+Contains tests of STDP done on LIF networks.
 
 Net model: 2 Linear Layers with LIF activFun.
 Step: The evolution of LIFs is based on the surrogate gradient.
+LIFs are initialized at the Net initialization.
 For each example administration, a subcycle is launched in which
-    the LIFs are initialized and allowed to evolve according to
+    the  and allowed to evolve according to
     their own dynamics.
 
+Notes
+-----
+* Here we need to solve the issue about the dynamics of the network with 
+respect to the time of administration of the stimulus (seeing the example)
+and the time of the dynamics of the neuron.
+Coming from the surGrad, the training takes place:
+1. for each example
+2. LIFs are initialized
+3.The dynamics of the LIFs is left to evolve by a delta t.  
+
+This is a problem because the dynamics are reset for each sample, eliminating 
+the "life history" of the neurons, which is useful in the STDP regime. 
 
 References
 ----------
@@ -42,7 +55,7 @@ Output decoding
 # %% Imports
 
 import sys
-sys.path += ["..", "../.."]
+sys.path += ["..", "../..", "../../.."]
 
 import time
 import os
@@ -65,6 +78,7 @@ import pandas as pd # noqa
 import itertools  # noqa
 
 from experimentkit_in.metricsreport import MetricsReport
+from experimentkit_in.monitor import Monitor
 from stdp.funx import stdp_step
 
 DATA_PATH = '../../data'
@@ -113,6 +127,7 @@ def print_batch_accuracy(data, targets, train=False):
     else:
         print(f"Test set accuracy for a single minibatch: {acc*100:.2f}%")
 
+
 def train_printer(
     epoch, iter_counter,
     test_data, test_targets,
@@ -128,7 +143,6 @@ def train_printer(
     print("\n")
 
 
-
 # %% Data Loading
 
 # dataloader arguments
@@ -136,7 +150,7 @@ batch_size = 32
 
 
 if not os.path.isdir(DATA_PATH):
-    raise Exception("Data dire =ctory not found")
+    raise Exception("Data directory not found")
 
 dtype = torch.float
 device = (
@@ -185,14 +199,14 @@ class Net(nn.Module):
         self.lif2.name = 'lif2'
 
         self.lif_layers_names = ['lif1', 'lif2']
+        self.mem1 = self.lif1.init_leaky()
+        self.mem2 = self.lif2.init_leaky()
         self.spk_rec = {nm: [] for nm in self.lif_layers_names}
         self.mem_rec = {nm: [] for nm in self.lif_layers_names}
 
     def forward(self, x):
 
         # Initialize hidden states at t=0
-        mem1 = self.lif1.init_leaky()
-        mem2 = self.lif2.init_leaky()
 
         # Record the layers
         #    These will collect the spiking history for all the
@@ -203,19 +217,22 @@ class Net(nn.Module):
         # Record the layers during inner (spiking) steps
         for _ in range(num_steps):
             cur1 = self.fc1(x)
-            spk1, mem1 = self.lif1(cur1, mem1)
+            spk1, mem1 = self.lif1(cur1, self.mem1)
+            self.mem1 = mem1
             cur2 = self.fc2(spk1)
-            spk2, mem2 = self.lif2(cur2, mem2)
+            spk2, mem2 = self.lif2(cur2, self.mem2)
+            self.mem2 = mem2
+
             spk_rec_fw['lif1'].append(spk1)
-            mem_rec_fw['lif1'].append(mem1)
+            mem_rec_fw['lif1'].append(self.mem1)
             spk_rec_fw['lif2'].append(spk2)
-            mem_rec_fw['lif2'].append(mem2)
+            mem_rec_fw['lif2'].append(self.mem2)
 
         spk_out = torch.stack(spk_rec_fw['lif2'], dim=0)
         mem_out = torch.stack(mem_rec_fw['lif2'], dim=0)
 
         # Append the new batch of inner steps to the recs
-        # self.spk_rec [=] (examples, num_steps, num_outputs)
+        # self.spk_rec [=] (examples, num_steps, batch_size, num_outputs)
         for nm in self.lif_layers_names:
             self.spk_rec[nm].append(torch.stack(spk_rec_fw[nm], dim=0))
         for nm in self.lif_layers_names:
@@ -254,6 +271,11 @@ stdp_dt_idxs = []
 spk2_rec = []
 mem2_rec = []
 counter = 0
+
+loss_monitor = Monitor(
+    x=range(len(loss_hist)), y=loss_hist, plot_kwargs={'marker': 'x'},
+    title="Loss", xlabel="# iterations", pause=0.01)
+
 # Outer training loop
 for epoch in range(num_epochs):
     iter_counter = 0
@@ -284,6 +306,11 @@ for epoch in range(num_epochs):
         
         # Store loss history for future plotting
         loss_hist.append(loss_val.item())
+
+        if i % 50 == 0:
+            print(f"len loss_hist: {loss_hist}")
+            loss_monitor.update(x=range(len(loss_hist)), y=loss_hist)
+
 
         # Test set
         with torch.no_grad():
@@ -328,4 +355,4 @@ plt.ylabel("Loss")
 plt.show()
 
 fig.savefig(imgs_path/f"{EXP_PREFIX}-Loss.png")
-# %%
+# %% DEV - todelete

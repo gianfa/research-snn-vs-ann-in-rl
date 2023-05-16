@@ -8,7 +8,7 @@ import sys
 
 import pandas as pd
 
-sys.path.append("../..")
+sys.path += ["..", "../..", "../../.."]
 from experimentkit_in.funx import pickle_load
 
 dir_path = "./data"

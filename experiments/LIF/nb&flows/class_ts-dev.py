@@ -18,7 +18,7 @@ ISSUE:
 
 """
 import sys
-sys.path += ["..", "../.."]
+sys.path += ["..", "../..", "../../.."]
 
 import time
 import os
@@ -39,7 +39,6 @@ import torch  # noqa
 import torch.nn as nn  # noqa
 from torch.utils.data import Dataset, DataLoader, TensorDataset  # noqa
 from torchvision import datasets, transforms  # noqa
-import tqdm
 
 from experimentkit_in.visualization import plot_n_examples
 from experimentkit_in.metricsreport import MetricsReport
@@ -80,24 +79,6 @@ def print_batch_accuracy(data, targets, train=False):
         print(f"Train set accuracy for a single minibatch: {acc*100:.2f}%")
     else:
         print(f"Test set accuracy for a single minibatch: {acc*100:.2f}%")
-
-
-def training_bar_init(total, **kwargs):
-    import warnings
-    warnings.filterwarnings('ignore')
-    pbar = tqdm.tqdm(total=total, **kwargs)
-    return pbar
-
-def training_bar_update(
-        arg_dict: dict, pbar: tqdm.std.tqdm, progress: float) -> None:
-    desc = "|".join([
-        f"{k}:{v.__round__(2) if type(v) == float else v}"
-            for k, v in arg_dict.items()])
-    pbar.update(progress)
-    pbar.set_description(desc)
-    pbar.refresh()
-    return pbar
-
 
 
 def print_vars_table(arg_dict: dict, print_title: bool=False) -> None:
@@ -323,7 +304,7 @@ class Net(nn.Module):
         mem_out = torch.stack(mem_rec_fw['lif2'], dim=0)
 
         # Append the new batch of inner steps to the recs
-        # self.spk_rec [=] (n_net_inner_steps, examples, num_outputs)
+        # self.spk_rec [=] (examples, n_net_inner_steps, num_outputs)
         for nm in self.lif_layers_names:
             self.spk_rec[nm].append(torch.stack(spk_rec_fw[nm], dim=0))
         for nm in self.lif_layers_names:
@@ -369,11 +350,8 @@ counter = 0
 #     x=range(len(loss_hist)), y=loss_hist, plot_kwargs={'marker': 'x'},
 #     title="Loss", xlabel="# iterations", pause=0.01)
 # Outer training loop
-n_examples = len(train_dl.dataset)
-n_batches = np.ceil(len(train_dl.dataset)/train_dl.batch_size)
 for epoch in range(num_epochs):
     iter_counter = 0
-    pbar = training_bar_init(n_batches)
 
     # Minibatch training loop
     for Xi, yi in iter(train_dl):
@@ -409,8 +387,8 @@ for epoch in range(num_epochs):
             'b. accuracy': \
                 f"{torch.sum(yi_pred_int==yi_int)/yi_pred_int.shape[0]:.2f}"
         }
-        # print_vars_table(
-        #     iter_results,iter_counter % 50 == 0 or iter_counter == 0)
+        print_vars_table(
+            iter_results,iter_counter % 50 == 0 or iter_counter == 0)
 
         # Store loss history for future plotting
         loss_hist.append(loss_val.item())
@@ -442,10 +420,8 @@ for epoch in range(num_epochs):
             #     train_printer(
             #         data, targets, epoch, counter, iter_counter,
             #         loss_hist, valid_loss_hist, Xi_valid, yi_valid)
-        pbar = training_bar_update(
-                iter_results, pbar, iter_counter)
-        counter += 1
-        iter_counter += 1
+            counter += 1
+            iter_counter += 1
 
 training_time = int(time.time() - t_start)
 print(f"Elapsed time: {int(time.time() - t_start)}s")

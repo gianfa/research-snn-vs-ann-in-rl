@@ -15,7 +15,7 @@ X -> RNN -> y
 
 """
 import sys
-sys.path.append("../..")
+sys.path += ["..", "../..", "../../.."]
 
 import time
 import os

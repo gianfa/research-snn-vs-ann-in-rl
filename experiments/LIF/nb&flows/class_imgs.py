@@ -1,14 +1,15 @@
 # %%
-""" [INCOMPLETE] STDP Implementation trials, on LIFs
-
-NOTES
------
-IN-DEVELOPMENT. This exp is not ready yet
-
+"""  LIFs no STDP
 
 Description
 ----------
-Contains tests of STDP done on LIF networks.
+Contains tests of images classification by LIF networks.
+
+Net model: 2 Linear Layers with LIF activFun.
+Step: The evolution of LIFs is based on the surrogate gradient.
+For each example administration, a subcycle is launched in which
+    the LIFs are initialized and allowed to evolve according to
+    their own dynamics.
 
 
 References
@@ -41,10 +42,11 @@ Output decoding
 # %% Imports
 
 import sys
-sys.path += ["..", "../.."]
+sys.path += ["..", "../..", "../../.."]
 
 import time
 import os
+from pathlib import Path
 from typing import Dict, List
 import seaborn as sns
 import snntorch as snn  # noqa
@@ -65,8 +67,13 @@ import itertools  # noqa
 from experimentkit_in.metricsreport import MetricsReport
 from stdp.funx import stdp_step
 
-data_path = '../../data'
+DATA_PATH = '../../data'
+EXP_PATH = "."
+IMGS_PATH = None
+EXP_PREFIX = "v1"
 
+imgs_path = IMGS_PATH if IMGS_PATH is not None else Path(EXP_PATH)/"imgs"
+os.makedirs(imgs_path, exist_ok=True)
 
 # %% Helper functions
 
@@ -95,8 +102,11 @@ def print_vars_table(arg_dict: dict, print_title: bool=False) -> None:
     return None
 
 
-def print_batch_accuracy(net, data, targets, train=False, layer_name=None):
-    acc = batch_accuracy(net, data, targets, layer_name)
+def print_batch_accuracy(data, targets, train=False):
+    # https://github.com/jeshraghian/snntorch/blob/master/docs/tutorials/tutorial_5.rst#71-accuracy-metric
+    output, _ = net(data.view(batch_size, -1))
+    _, idx = output.sum(dim=0).max(1)
+    acc = np.mean((targets == idx).detach().cpu().numpy())
 
     if train:
         print(f"Train set accuracy for a single minibatch: {acc*100:.2f}%")
@@ -104,19 +114,17 @@ def print_batch_accuracy(net, data, targets, train=False, layer_name=None):
         print(f"Test set accuracy for a single minibatch: {acc*100:.2f}%")
 
 def train_printer(
-    net,
     epoch, iter_counter,
     test_data, test_targets,
     loss_hist, test_loss_hist,
     data, targets,
-    counter,
-    layer_name=None):
+    ):
+    # https://github.com/jeshraghian/snntorch/blob/master/docs/tutorials/tutorial_5.rst#71-accuracy-metric
     print(f"Epoch {epoch}, Iteration {iter_counter}")
     print(f"Train Set Loss: {loss_hist[counter]:.2f}")
     print(f"Test Set Loss: {test_loss_hist[counter]:.2f}")
-    print_batch_accuracy(net, data, targets, train=True, layer_name=layer_name)
-    print_batch_accuracy(net, 
-        test_data, test_targets, train=False, layer_name=layer_name)
+    print_batch_accuracy(data, targets, train=True)
+    print_batch_accuracy(test_data, test_targets, train=False)
     print("\n")
 
 
@@ -127,8 +135,8 @@ def train_printer(
 batch_size = 32
 
 
-if not os.path.isdir(data_path):
-    raise Exception("Data directory not found")
+if not os.path.isdir(DATA_PATH):
+    raise Exception("Data dire =ctory not found")
 
 dtype = torch.float
 device = (
@@ -142,9 +150,9 @@ transform = transforms.Compose([
             transforms.Normalize((0,), (1,))])
 
 mnist_train = datasets.MNIST(
-    data_path, train=True, download=True, transform=transform)
+    DATA_PATH, train=True, download=True, transform=transform)
 mnist_test = datasets.MNIST(
-    data_path, train=False, download=True, transform=transform)
+    DATA_PATH, train=False, download=True, transform=transform)
 
 # Create DataLoaders
 train_loader = DataLoader(
@@ -157,13 +165,12 @@ test_loader = DataLoader(
 
 # Network Architecture
 num_inputs = 28 * 28
-num_hidden = 200
+num_hidden = 1000
 num_outputs = 10
 
 # Temporal Dynamics
 num_steps = 5
 beta = 0.95
-
 
 class Net(nn.Module):
     def __init__(self):
@@ -173,15 +180,10 @@ class Net(nn.Module):
         self.fc1 = nn.Linear(num_inputs, num_hidden)
         self.lif1 = snn.Leaky(beta=beta)
         self.lif1.name = 'lif1'
-
         self.fc2 = nn.Linear(num_hidden, num_outputs)
         self.lif2 = snn.Leaky(beta=beta)
         self.lif2.name = 'lif2'
 
-        # Record the layers
-        #    These will collect the spiking history for all the
-        #    training steps
-        # Spikes/activations Recorder
         self.lif_layers_names = ['lif1', 'lif2']
         self.spk_rec = {nm: [] for nm in self.lif_layers_names}
         self.mem_rec = {nm: [] for nm in self.lif_layers_names}
@@ -213,6 +215,7 @@ class Net(nn.Module):
         mem_out = torch.stack(mem_rec_fw['lif2'], dim=0)
 
         # Append the new batch of inner steps to the recs
+        # self.spk_rec [=] (examples, num_steps, num_outputs)
         for nm in self.lif_layers_names:
             self.spk_rec[nm].append(torch.stack(spk_rec_fw[nm], dim=0))
         for nm in self.lif_layers_names:
@@ -231,16 +234,14 @@ optimizer = torch.optim.Adam(net.parameters(), lr=5e-4, betas=(0.9, 0.999))
 
 # %% # Training Loop
 
-num_epochs = 1
+num_epochs = 3
 
-train_mr = MetricsReport()
-valid_mr = MetricsReport()
 loss_hist = []
 test_loss_hist = []
 
 counter = 0
 t_start = time.time()
-dt_stdp = 2
+dt_stdp = 10
 
 get_model_layer_params = lambda layer_name: \
     dict(net.named_parameters())[f'{layer_name}.weight']
@@ -275,82 +276,41 @@ for epoch in range(num_epochs):
         loss_val = torch.zeros((1), dtype=dtype, device=device)
         for step in range(num_steps):
             loss_val = loss_val + loss(mem_out[step], targets.long())
-        
-
-        # take idx of the max firing neuron, as the y_pred
-        #   spk_out [=] batch_size x t_delta
-        # _, y_pred = spk_out.sum(dim=0).max()
-        # train_mr.append(targets, y_pred)
-        # iter_results = {
-        #     'epoch': epoch,
-        #     'iteration': iter_counter,
-        #     'loss': f"{loss_val.item():.2f}",
-        #     'b. accuracy': f"{batch_accuracy(net, data, targets, 'lif2'):.2f}"
-        # }
-        # print_vars_table(
-        #     iter_results,iter_counter % 50 == 0 or iter_counter == 0)
 
         # Gradient calculation + weight update
         optimizer.zero_grad()
         loss_val.backward()
-        optimizer.step() 
-
-        # STDP #
-        # CAVEAT: spk_out is already a collection of many iterations
-        if i > 0 and i % dt_stdp == 0:
-            steps = (i - dt_stdp, i)
-            # cur_raster = raster[steps[0]:steps[1]]
-            cur_raster = spk_out[steps[0]:steps[1]]
-            weights = dict(net.named_parameters())['fc2.weight']
-            new_weights=stdp_step(
-                weights=weights,
-                connections=None,
-                raster=cur_raster,
-                # spike_collection_rule=all_to_all,
-                # dw_rule="sum",
-                bidirectional=True,
-                max_delta_t=20,
-                inplace=False,
-                v=False,
-            )
-            for name, param in net.named_parameters():
-                if name == "fc2.weight":
-                    param.data = nn.parameter.Parameter(new_weights.clone())
-            assert dict(net.named_parameters())['fc2.weight'] == new_weights
-            # store the new weights
-            weights['fc2'].append(new_weights.clone())
-            stdp_dt_idxs.append(step)
-
-
+        optimizer.step()
+        
         # Store loss history for future plotting
-        # loss_hist.append(loss_val.item())
+        loss_hist.append(loss_val.item())
 
-        # Validation set
-        # with torch.no_grad():
-        #     net.eval()
-        #     test_data, test_targets = next(iter(test_loader))
-        #     test_data = test_data.to(device)
-        #     test_targets = test_targets.to(device)
+        # Test set
+        with torch.no_grad():
+            net.eval()
+            test_data, test_targets = next(iter(test_loader))
+            test_data = test_data.to(device)
+            test_targets = test_targets.to(device)
 
-        #     # Test set forward pass
-        #     test_spk, test_mem = net(test_data.view(batch_size, -1))
+            # Test set forward pass
+            test_spk, test_mem = net(test_data.view(batch_size, -1))
 
-        #     # Test set loss
-        #     test_loss = torch.zeros((1), dtype=dtype, device=device)
-        #     for step in range(num_steps):
-        #         test_loss += loss(test_mem[step], test_targets)
-        #     test_loss_hist.append(test_loss.item())
+            # Test set loss
+            test_loss = torch.zeros((1), dtype=dtype, device=device)
+            for step in range(num_steps):
+                test_loss += loss(test_mem[step], test_targets)
+            test_loss_hist.append(test_loss.item())
 
-        #     _, test_y_pred = test_spk.sum(dim=0).max(dim=1)
-        #     valid_mr.append(targets, test_y_pred)
-
-        #     # Print train/test loss/accuracy
-        #     if counter % 50 == 0:
-        #         train_printer( net,
-        #             data, targets, epoch, counter, iter_counter,
-        #             loss_hist, test_loss_hist, test_data, test_targets, layer_name='lif2')
-        #     counter += 1
-        iter_counter += 1
+            # Print train/test loss/accuracy
+            if counter % 50 == 0:
+                train_printer(
+                    epoch, iter_counter,
+                    test_data, test_targets,
+                    loss_hist, test_loss_hist,
+                    data, targets,
+                )
+            counter += 1
+            iter_counter +=1
 
 print(f"Elapsed time: {int(time.time() - t_start)}s")
 print(f"{len(stdp_dt_idxs)} STDP step performed")
@@ -367,39 +327,5 @@ plt.xlabel("Iteration")
 plt.ylabel("Loss")
 plt.show()
 
-#  Evaluation on Test
-total = 0
-correct = 0
-
-# drop_last switched to False to keep all samples
-test_loader = DataLoader(
-    mnist_test, batch_size=batch_size, shuffle=True, drop_last=False)
-
-# with torch.no_grad():
-#     net.eval()
-#     for data, targets in test_loader:
-#         data = data.to(device)
-#         targets = targets.to(device)
-
-#         # forward pass
-#         test_spk, _ = net(data.view(data.size(0), -1))
-
-#         # calculate total accuracy
-#         _, predicted = test_spk.sum(dim=0).max(1)
-#         total += targets.size(0)
-#         correct += (predicted == targets).sum().item()
-
-# print(f"Total correctly classified test set images: {correct}/{total}")
-# print(f"Test Set Accuracy: {100 * correct / total:.2f}%")
-
-# %%
-
-ms, ms_ns = train_mr.get_metrics(return_names=True)
-metrics_hist_df = pd.DataFrame(ms, columns=ms_ns)
-metrics_hist_df
-
-train_mr.plot_confusion_matrix(
-    title='train Confusion Matrix', fmt=f".1f", normalize='true')
-valid_mr.plot_confusion_matrix(
-    title='valid Confusion Matrix', fmt=f".1f", normalize='true')
+fig.savefig(imgs_path/f"{EXP_PREFIX}-Loss.png")
 # %%

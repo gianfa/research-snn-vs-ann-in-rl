@@ -41,7 +41,7 @@ Output decoding
 # %% Imports
 
 import sys
-sys.path += ["..", "../.."]
+sys.path += ["..", "../..", "../../.."]
 
 import time
 import os

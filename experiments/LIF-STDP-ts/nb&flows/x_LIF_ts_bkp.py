@@ -1,5 +1,5 @@
 # %%
-"""
+"""[INCOMPLETE]
 3nd Gen. timeseries Classification
 
 Description
@@ -10,15 +10,12 @@ X -> LIFnet -> y
 - Such a signal is a function of two phases w1, w2: X_i = s(w1, w2); w1 << w2
 - The labels are such phases, encoded as one-hot arrays: y = 1h(w1, w2)
 
-ISSUE:
-- Being the test set very similar (or equal) to the training set, here we are
-    in a data-leak-like situation 
 
 
 
 """
 import sys
-sys.path += ["..", "../.."]
+sys.path += ["..", "../..", "../../.."]
 
 import time
 import os
@@ -33,8 +30,7 @@ import seaborn as sns
 import snntorch as snn  # noqa
 from snntorch import spikeplot as splt  # noqa
 from snntorch import spikegen  # noqa
-from sklearn.metrics import ( # noqa
-    accuracy_score, precision_score, f1_score, confusion_matrix)
+from sklearn.metrics import accuracy_score, precision_score, f1_score, confusion_matrix  # noqa
 import torch  # noqa
 import torch.nn as nn  # noqa
 from torch.utils.data import Dataset, DataLoader, TensorDataset  # noqa
@@ -45,19 +41,15 @@ from experimentkit_in.metricsreport import MetricsReport
 from experimentkit_in.metricsreport import MetricsReport
 from experimentkit_in.generators.time_series import *
 from experimentkit_in.monitor import Monitor
-from experimentkit_in.funx import pickle_save_dict
 from stdp.funx import stdp_step
 
 DATA_PATH = '../../data'
-EXP_PREFIX = "hidden_16-td_50"
-EXP_PATHS = {}
-EXP_PATHS['root'] = Path(".")
-EXP_PATHS['imgs'] = EXP_PATHS['root']/"imgs"
-EXP_PATHS['data'] = EXP_PATHS['root']/"data"
+EXP_PATH = "."
+IMGS_PATH = None
+EXP_PREFIX = "v1"
 
-imgs_path = EXP_PATHS['imgs']
-for dir_name, dir_path in EXP_PATHS.items():
-    os.makedirs(dir_path, exist_ok=True)
+imgs_path = IMGS_PATH if IMGS_PATH is not None else Path(EXP_PATH)/"imgs"
+os.makedirs(imgs_path, exist_ok=True)
 
 # %% Helper functions
 
@@ -124,16 +116,13 @@ def train_printer(
 
 # %% Dataset Creation: Signal definition
 
-batch_size: int = 32
+batch_size = 64
 
 w1 = 2
 w2 = w1 * 3
 w3 = 4
 w4 = w3 * 3
-
-sig_length = 40 # length of the Xi signals
-tot_sig_length = 20 * 40 # length of the parent sig, to be cut to have many Xi
-
+sig_length = 500
 
 
 dtype = torch.float
@@ -145,10 +134,10 @@ device = (
 sig_2w = lambda w1, w2, t: (1 + np.cos(w1 * t) ) * (1 + np.sin(w2 * t))
 
 ws = [w1, w2, w3, w4]
-t = np.arange(tot_sig_length)
-parent_signals = [sig_2w(w1, w2, t) for w1, w2 in combinations(ws, 2)]
+t = np.arange(sig_length)
+signals = [sig_2w(w1, w2, t) for w1, w2 in combinations(ws, 2)]
 
-plot_n_examples(parent_signals, 6)
+plot_n_examples(signals, 6)
 
 
 # Label Encoding
@@ -168,50 +157,40 @@ oh2label = lambda oh: ws_combinations[oh2int(oh)]
 # int2label = {i:ws_combinations[i] for i in range(ncats)}
 # label2int = {wsi: i for i, wsi in int2label.items()}
 
-
 # %% Dataset Creation: batching
 
-def ts_get_signals_and_labels(
-        parent_signals: list, labels: list, sig_length: int
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+def ts_get_batches_and_labels(signals: list, labels: list, batch_size: int):
     """
-    
-    It discards the last batch if its length is lower than sig_length
-
     Examples
     --------
     >>> nsignals = 3
-    >>> signals = np.random.rand(100, parent_signals)
+    >>> signals = np.random.rand(100, nsignals)
     >>> labels = np.arange(nsignals)
-    >>> signals, signals_labels = ts_get_signals_and_labels(
+    >>> batches, batches_labels = ts_get_batches_and_labels(
     ...     signals, labels, 32)
     """
-    signals = []
-    signals_labels = []
-    for i, psi_li in enumerate(zip(parent_signals, labels)):
-        psi, li = psi_li # parent_signal_i, label_i
+    batches = []
+    batches_labels = []
+    for i, si_li in enumerate(zip(signals, labels)):
+        si, li = si_li
         sig_i_b = [] # [batch_0_s1 batch_1_s1, ..., batch_n_s1]
-        for i in range(0, len(psi), sig_length):
-            sig_i_b_i = psi[i:min(i + sig_length, len(psi))]
-            if len(sig_i_b_i) == sig_length:
+        for i in range(0, sig_length, batch_size):
+            sig_i_b_i = si[i:min(i + batch_size, len(si))]
+            if len(sig_i_b_i) == batch_size:
                 sig_i_b.append(sig_i_b_i)
         li_i = [label2oh(li) for _ in sig_i_b]
-        signals.append(sig_i_b)
-        signals_labels.append(li_i)
-    assert len(signals) == len(signals) == len(signals_labels)
+        batches.append(sig_i_b)
+        batches_labels.append(li_i)
+    assert len(batches) == len(signals) == len(batches_labels)
 
-    signals = torch.Tensor(np.vstack(signals)).float()
-    signals_labels = torch.Tensor(np.vstack(signals_labels)).int()
-    assert len(signals) == len(signals_labels)
-    return signals, signals_labels
+    batches = torch.Tensor(np.vstack(batches)).float()
+    batches_labels = torch.Tensor(np.vstack(batches_labels)).int()
+    assert len(batches) == len(batches_labels)
+    return batches, batches_labels
 
-signals, signals_labels = ts_get_signals_and_labels(
-    parent_signals, labels, sig_length=sig_length)
-
-plot_n_examples(signals, 6)
-print(
-    f"signals.shape: {signals.shape},\n"+
-    f"signals_labels.shape: {signals_labels.shape}")
+batches, batches_labels = ts_get_batches_and_labels(
+    signals, labels, batch_size)
+plot_n_examples(batches, 6)
 # %% Dataset Creation: load into DataLoaders
 
 class BiPhasicDataset(Dataset):
@@ -227,8 +206,8 @@ class BiPhasicDataset(Dataset):
     def __len__(self):
         return len(self.X)
 
-signal_ds = BiPhasicDataset(signals, signals_labels)
-signal_dl = DataLoader(signal_ds, batch_size=batch_size)
+signal_ds = BiPhasicDataset(batches, batches_labels)
+signal_dl = DataLoader(signal_ds)
 
 # train/valid/test split
 total_count = len(signal_ds)
@@ -239,14 +218,10 @@ train_dataset, valid_dataset, test_dataset = torch.utils.data.random_split(
     signal_ds, (train_count, valid_count, test_count)
 )
 
-train_dl = DataLoader(train_dataset, shuffle=True, batch_size=batch_size)
-valid_dl = DataLoader(valid_dataset, shuffle=True, batch_size=batch_size)
-test_dl = DataLoader(test_dataset, shuffle=True, batch_size=batch_size)
+train_dl = DataLoader(train_dataset, shuffle=True)
+valid_dl = DataLoader(valid_dataset, shuffle=True)
+test_dl = DataLoader(test_dataset, shuffle=True)
 
-print(
-    f"Train len:{len(train_dl.dataset)}\n" +
-    f"valid len:{len(valid_dl.dataset)}\n" +
-    f"test len:{len(test_dl.dataset)}\n")
 # # Check
 # for x_i, y_i in train_dl:
 #     print(x_i.shape, y_i.shape)
@@ -255,11 +230,11 @@ print(
 # %% # Network Definition
 
 # Network Architecture
-num_inputs = sig_length
-num_hidden = 1
+num_inputs = batch_size
+num_hidden = 10
 num_outputs = ncats # n combinations
 
-n_net_inner_steps = 50
+num_steps = 5
 beta = 0.95
 class Net(nn.Module):
     def __init__(self):
@@ -290,7 +265,7 @@ class Net(nn.Module):
         mem_rec_fw = {nm: [] for nm in self.lif_layers_names}
 
         # Record the layers during inner (spiking) steps
-        for _ in range(n_net_inner_steps):
+        for _ in range(num_steps):
             cur1 = self.fc1(x)
             spk1, mem1 = self.lif1(cur1, mem1)
             cur2 = self.fc2(spk1)
@@ -304,13 +279,14 @@ class Net(nn.Module):
         mem_out = torch.stack(mem_rec_fw['lif2'], dim=0)
 
         # Append the new batch of inner steps to the recs
-        # self.spk_rec [=] (examples, n_net_inner_steps, num_outputs)
+        # self.spk_rec [=] (examples, num_steps, num_outputs)
         for nm in self.lif_layers_names:
             self.spk_rec[nm].append(torch.stack(spk_rec_fw[nm], dim=0))
         for nm in self.lif_layers_names:
             self.mem_rec[nm].append(torch.stack(mem_rec_fw[nm], dim=0))
         
         return spk_out, mem_out
+
 
 
 # Load the network onto CUDA if available
@@ -323,12 +299,12 @@ optimizer = torch.optim.Adam(net.parameters(), lr=5e-4, betas=(0.9, 0.999))
 
 # %% # Training Loop
 
-num_epochs = 200
+num_epochs = 50
 
 train_mr = MetricsReport()
 valid_mr = MetricsReport()
 loss_hist = []
-valid_loss_hist = []
+test_loss_hist = []
 
 counter = 0
 t_start = time.time()
@@ -346,164 +322,165 @@ spk2_rec = []
 mem2_rec = []
 counter = 0
 
-# loss_monitor = Monitor(
-#     x=range(len(loss_hist)), y=loss_hist, plot_kwargs={'marker': 'x'},
-#     title="Loss", xlabel="# iterations", pause=0.01)
+loss_monitor = Monitor(
+    x=range(len(loss_hist)), y=loss_hist, plot_kwargs={'marker': 'x'},
+    title="Loss", xlabel="# iterations", pause=0.01)
 # Outer training loop
 for epoch in range(num_epochs):
     iter_counter = 0
 
     # Minibatch training loop
     for Xi, yi in iter(train_dl):
-        Xi = Xi.to(device) # [=] (batch_size, sig_length)
-        yi = yi.to(device) # [=] (batch_size, ncats)
+        Xi = Xi.to(device)
+        yi = yi.to(device)
 
-        net.train()
-        # mem_out [=] (n_net_inner_steps, batch_size, ncats)
-        spk_out, mem_out = net(Xi)
-
-        # Let's take the max membrane at time step, as the most probable cat
-        yi_pred = mem_out.max(dim=0)[0] # [=] (batch_size, ncats)
-        yi_pred_int = yi_pred.argmax(dim=1)
-        yi_int = yi.argwhere()[:, 1] # form 1-h
-
-        # Loss
-        # initialize the loss & sum over time
-        # Here the loss is a batch loss (1 per batch)
-        loss_val = torch.zeros((1), dtype=dtype, device=device)
-        for step in range(n_net_inner_steps):
-            loss_val = loss_val + loss_fn(mem_out[step], yi.float())
-
-        # Gradient calculation + weight update
         optimizer.zero_grad() # prepare for the step
-        loss_val.backward() # propagate loss gradient
+
+        # Forward
+        output = net(Xi.float())
+        # Loss
+        _, yi_pred = torch.max(output.data, 1)
+        loss = loss_fn(output, yi.float())
+        # loss.requires_grad = True
+        # Backward
+        loss.backward() # propagate loss gradient
+
         optimizer.step() # update the parameters
 
-        train_mr.append(yi_int, yi_pred_int)
+        print(type(yi), type(yi_pred))
+        train_mr.append(oh2int(yi.flatten()), yi_pred)
         iter_results = {
             'epoch': epoch,
             'iteration': iter_counter,
-            'loss': f"{loss_val.item():.2f}",
-            'b. accuracy': \
-                f"{torch.sum(yi_pred_int==yi_int)/yi_pred_int.shape[0]:.2f}"
+            'loss': f"{loss:.2f}",
+            'b. accuracy': f"{torch.sum(yi_pred==yi)/yi_pred.shape[0]:.2f}"
         }
         print_vars_table(
             iter_results,iter_counter % 50 == 0 or iter_counter == 0)
 
         # Store loss history for future plotting
-        loss_hist.append(loss_val.item())
+        loss_hist.append(loss.item())
 
         # Validation set
-        with torch.no_grad():
-            net.eval()
-            Xi_valid, yi_valid = next(iter(valid_dl))
-            Xi_valid = Xi_valid.to(device)
-            yi_valid = yi_valid.to(device)
+        # with torch.no_grad():
+        #     net.eval()
+        #     test_data, test_targets = next(iter(test_dl))
+        #     test_data = test_data.to(device)
+        #     test_targets = test_targets.to(device)
 
-            # Valid set forward pass
-            spk_out, mem_out = net(Xi)
-            yi_valid_pred = mem_out.max(dim=0)[0]
-            yi_valid_pred_int = yi_valid_pred.argmax(dim=1)
-            yi_valid_int = yi.argwhere()[:, 1] # form 1-h
+        #     # Test set forward pass
+        #     test_output = net(test_data.view(batch_size, -1))
 
-            # Valid set loss
-            loss_valid = torch.zeros((1), dtype=dtype, device=device)
-            for step in range(n_net_inner_steps):
-                loss_valid = loss_valid + loss_fn(mem_out[step], yi.float())
+        #     # Test set loss
+        #     test_loss = loss_fn(test_output, test_targets)
             
-            # _, train_y_pred = torch.max(output.data, 1)
-            valid_mr.append(yi_valid_int, yi_valid_pred_int)
-            valid_loss_hist.append(loss_valid.item())
+        #     _, train_y_pred = torch.max(output.data, 1)
+        #     train_mr.append(targets, train_y_pred)
+        #     test_loss_hist.append(test_loss.item())
 
-            # Print train/test loss/accuracy
-            # if counter % 50 == 0:
-            #     train_printer(
-            #         data, targets, epoch, counter, iter_counter,
-            #         loss_hist, valid_loss_hist, Xi_valid, yi_valid)
-            counter += 1
-            iter_counter += 1
+        #     # Print train/test loss/accuracy
+        #     # if counter % 50 == 0:
+        #     #     train_printer(
+        #     #         data, targets, epoch, counter, iter_counter,
+        #     #         loss_hist, test_loss_hist, test_data, test_targets)
+        #     counter += 1
+        #     iter_counter += 1
 
-training_time = int(time.time() - t_start)
 print(f"Elapsed time: {int(time.time() - t_start)}s")
-# %% Visualize: Plot Train/Valid Loss
+
+# %%
+# Visualize
+# Plot Loss
 fig = plt.figure(facecolor="w", figsize=(10, 5))
 plt.plot(loss_hist)
-plt.plot(valid_loss_hist)
+plt.plot(test_loss_hist)
 plt.title("Loss Curves")
-plt.legend(["Train Loss", "Valid Loss"])
+plt.legend(["Train Loss", "Test Loss"])
 plt.xlabel("Iteration")
 plt.ylabel("Loss")
 plt.show()
 
-fig.savefig(imgs_path/f"{EXP_PREFIX}-Loss.png")
+#  Evaluation on Test
+total = 0
+correct = 0
 
-# %% Evaluation: Test Set
+# drop_last switched to False to keep all samples
+# test_loader = DataLoader(
+#     mnist_test, batch_size=batch_size, shuffle=True, drop_last=False)
 
-test_mr = MetricsReport()
-test_loss_hist = []
-for Xi_test, yi_test in iter(test_dl):
-    Xi_test = Xi_test.to(device) # [=] (batch_size, sig_length)
-    yi_test = yi_test.to(device) # [=] (batch_size, ncats)
+# with torch.no_grad():
+#     net.eval()
+#     for data, targets in test_loader:
+#         data = data.to(device)
+#         targets = targets.to(device)
 
-    with torch.no_grad():
-        # mem_out [=] (n_net_inner_steps, batch_size, ncats)
-        spk_out, mem_out = net(Xi_test)
+#         # forward pass
+#         test_spk, _ = net(data.view(data.size(0), -1))
 
-        # Let's take the max membrane at time step, as the most probable cat
-        yi_test_pred = mem_out.max(dim=0)[0] # [=] (batch_size, ncats)
-        yi_test_pred_int = yi_test_pred.argmax(dim=1)
-        yi_test_int = yi_test.argwhere()[:, 1] # form 1-h
+#         # calculate total accuracy
+#         _, predicted = test_spk.sum(dim=0).max(1)
+#         total += targets.size(0)
+#         correct += (predicted == targets).sum().item()
 
-        # Test set loss
-        # Here the loss is a batch loss
-        loss_test = torch.zeros((1), dtype=dtype, device=device)
-        for step in range(n_net_inner_steps):
-            loss_test = loss_test + loss_fn(mem_out[step], yi_test.float())
-        
-        # _, train_y_pred = torch.max(output.data, 1)
-        test_mr.append(yi_test_int, yi_test_pred_int)
-        test_loss_hist.append(loss_test.item())
+# print(f"Total correctly classified test set images: {correct}/{total}")
+# print(f"Test Set Accuracy: {100 * correct / total:.2f}%")
 
-# %% Visualize: Plot Test Loss
-if len(test_loss_hist) > 1:
-    fig = plt.figure(facecolor="w", figsize=(10, 5))
-    plt.plot(test_loss_hist)
-    plt.title("Test Loss")
-    plt.legend(["Test Loss"])
-    plt.xlabel("Iteration")
-    plt.ylabel("Loss")
-    plt.show()
 
-    fig.savefig(imgs_path/f"{EXP_PREFIX}-Test-Loss.png")
-
-print(test_mr.get_metrics(return_frame=True))
-
+ms, ms_ns = train_mr.get_metrics(return_names=True)
+metrics_hist_df = pd.DataFrame(ms, columns=ms_ns)
+metrics_hist_df
 # %%
 
-cm_ax = train_mr.plot_confusion_matrix(title="Train ConfMat")
-cm_ax.figure.savefig(imgs_path/f"{EXP_PREFIX}-ConfMat-train.png")
+train_mr.plot_confusion_matrix(
+    title='train Confusion Matrix', fmt=f".1f", normalize='true')
+# valid_mr.plot_confusion_matrix(
+#     title='valid Confusion Matrix', fmt=f".1f", normalize='true')
 
-valid_mr.plot_confusion_matrix(title="Valid ConfMat")
+# %% Test score
 
-# %% Store project metadata
+test_mr = MetricsReport()
+test_dl_i = iter(test_dl)
+test_loss_hist = []
+with torch.no_grad():
+    for Xi, yi in iter(train_dl):
+        Xi = Xi.to(device)
+        yi = yi.to(device)
 
-proj_desc = {
-    'label': '',
-    'ws': [ws],
-    'sig_length': sig_length,
-    'train_dl-len': len(train_dl.dataset),
-    'batch_size': batch_size,
-    'num_epochs': num_epochs,
-    'net_inner_delta_t': n_net_inner_steps,
-    'train-metrics': train_mr.get_metrics(return_frame=True).tail(1).to_dict(),
-    'training-time': training_time,
-    'test-metrics': test_mr.get_metrics(return_frame=True),
-    'net': {
-        'neuron_beta': beta
-    },
-    'description': ""
-}
-pickle_save_dict(EXP_PATHS['data']/f"{EXP_PREFIX}-metadata.pkl", proj_desc)
-proj_desc
+        output = net(Xi.float())
+        _, yi_pred = torch.max(output.data, 1)
 
+        loss = loss_fn(output, yi.float())
+
+        # Score computations
+        test_mr.append(oh2int(yi.flatten()), yi_pred)
+        iter_results = {
+            'epoch': epoch,
+            'iteration': iter_counter,
+            'loss': f"{loss:.2f}",
+            'b. accuracy': f"{torch.sum(yi_pred==yi)/yi_pred.shape[0]:.2f}"
+        }
+        print_vars_table(
+            iter_results,iter_counter % 50 == 0 or iter_counter == 0)
+
+        # Store loss history for future plotting
+        test_loss_hist.append(loss.item())
+
+# Plot Loss
+fig = plt.figure(facecolor="w", figsize=(10, 5))
+plt.plot(test_loss_hist)
+plt.title("Test Loss")
+plt.xlabel("Iteration")
+plt.ylabel("Loss")
+plt.show()
+# %%
+
+
+ms, ms_ns = test_mr.get_metrics(return_names=True)
+metrics_hist_df = pd.DataFrame(ms, columns=ms_ns)
+metrics_hist_df
+
+
+test_mr.plot_confusion_matrix(
+    title='train Confusion Matrix', fmt=f".1f", normalize='true')
+# test_mr.plot_confusion_matrix(
 # %%

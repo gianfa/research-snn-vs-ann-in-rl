@@ -1,6 +1,6 @@
 # %%
 import sys
-sys.path += ["..", "../.."]
+sys.path += ["..", "../..", "../../.."]
 from typing import Callable, List, Tuple  # noqa
 
 import matplotlib.pyplot as plt
