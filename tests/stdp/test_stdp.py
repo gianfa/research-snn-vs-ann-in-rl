@@ -4,7 +4,7 @@ $ python -m pytest tests/stdp/test_stdp.py -vv --pdb
 """
 import collections
 import sys
-sys.path.append("../")
+sys.path += ["..", "../..", "../../.."]
 from typing import Iterable  # noqa
 
 import pytest  # noqa
@@ -12,8 +12,7 @@ import torch  # noqa
 from torch import nn
 
 from stdp.funx import (stdp_generate_dw_lookup, stdp_step, 
-    model_get_named_layer_params, model_layers_to_weights,
-    define_spiking_cluster)  # noqa
+    model_get_named_layer_params, model_layers_to_weights)  # noqa
 from stdp.spike_collectors import nearest_pre_post_pair
 
 @pytest.fixture
