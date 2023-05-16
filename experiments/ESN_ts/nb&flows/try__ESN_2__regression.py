@@ -6,7 +6,7 @@ $
 """
 import collections
 import sys
-sys.path += ["../", "../.."]
+sys.path += ["../", "../..", "../../.."]
 from typing import Callable, Iterable, List, Tuple  # noqa
 
 import matplotlib.pyplot as plt
