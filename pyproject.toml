@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "research-snn-vs-ann-in-rl"
-version = "0.1.5"
+version = "0.1.6a1"
 description = "Comparison of economics of choices between SNN and ANN in RL"
 authors = ["gianfa <gian.angelini@hotmail.com>"]
 packages = [{include = "stdp"}]
