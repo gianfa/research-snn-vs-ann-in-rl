@@ -3,7 +3,7 @@
 pytest ./experiments/LIF-STDP-ts/tests/test_class_ts.py -vv --pdb
 """
 import sys
-sys.path += ['experiments/LIF-STDP-ts', '.']
+sys.path += ['experiments/LIF-STDP-ts', '.', "..", "../.."]
 
 import os
 def test_class_ts():

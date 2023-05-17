@@ -360,6 +360,11 @@ def model_get_named_layer_params(
     return dict(net.named_parameters())[f'{layer_name}.weight']
 
 
+def ridge_regression_get_coeffs(
+        X: torch.TensorType, Y: torch.TensorType, alpha: float = 1):
+    return torch.linalg.inv(
+        X.T @ X + alpha * torch.eye(X.shape[1])) @ X.T @ Y
+
 # Currently not used
 def model_layers_to_weights(
         net, names: list) -> Dict[str, torch.nn.parameter.Parameter]:

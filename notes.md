@@ -1,17 +1,16 @@
 
 # Contents
-- [Contents](#contents)
-  - [Conventions](#conventions)
-  - [References](#references)
-  - [Training stage](#training-stage)
-    - [Assumptions](#assumptions)
-    - [Sketch](#sketch)
-  - [Questions](#questions)
-  - [Nice to study](#nice-to-study)
-  - [To tidy](#to-tidy)
-    - [Notes on proj steps](#notes-on-proj-steps)
-  - [NEXT](#next)
-  - [TODO](#todo)
+- [Conventions](#conventions)
+- [References](#references)
+- [Training stage](#training-stage)
+  - [Assumptions](#assumptions)
+  - [Sketch](#sketch)
+- [Questions](#questions)
+- [Nice to study](#nice-to-study)
+- [To tidy](#to-tidy)
+  - [Notes on proj steps](#notes-on-proj-steps)
+- [NEXT](#next)
+- [TODO](#todo)
 
 
 ## Conventions
@@ -125,7 +124,10 @@ for step in steps:
     if step % 5 == 0:
         STDP_step
 
+ESN
+- how the gradient is propagated through iterative passes through the same layer, in pytorch?
 
+- since it scans the whole sequence at every `forward`, one should pass to it a batch at every step, in train mode.
 
 ## Nice to study
 
