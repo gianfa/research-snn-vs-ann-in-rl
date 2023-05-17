@@ -6,9 +6,10 @@ python -m pytest tests/experimentkit/test_funx.py -vv --pdb
 
 import sys
 sys.path += ["../.."] # good to test in jupyter
-from experimentkit.monitor import Monitor
+
 import matplotlib.pyplot as plt
 
+from experimentkit_in.monitor import Monitor
 
 def test_Monitor__init():
     import random
@@ -32,6 +33,6 @@ def test_Monitor__update():
         monitor.update(x=x, y=y)
 
 
-test_Monitor__update()
+
 
 # %%

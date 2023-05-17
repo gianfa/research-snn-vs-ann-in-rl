@@ -1,7 +1,9 @@
-
-
+.conda*
 # github repos
 *gh-*
+*-hidden*
+*-ignore*
+
 
 # Experiment dirs
 .conda*

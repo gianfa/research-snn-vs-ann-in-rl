@@ -7,8 +7,8 @@ sys.path.append("..")
 import matplotlib.pyplot as plt
 import numpy as np
 
-from experimentkit.visualization import plot_n_examples
-from experimentkit.generators.time_series import (
+from experimentkit_in.visualization import plot_n_examples
+from experimentkit_in.generators.time_series import (
     ts_generate_constant, ts_generate_periodic_peak, ts_generate_periodic_sin,
     ts_add_onset, tsds_generate_periodic_sin_as_sum,
     tsds_generate_periodic_sin_as_prod_from_params
