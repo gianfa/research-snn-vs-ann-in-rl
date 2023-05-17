@@ -54,7 +54,6 @@ def get_system_info(mac_address: bool = False) -> dict:
     return info
 
 
-
 # import multiprocessing
 # import cProfile
 # import time
