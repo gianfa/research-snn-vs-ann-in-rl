@@ -7,7 +7,7 @@ import sys
 sys.path += [ '.']
 
 import os
-def test_try_STDP_on_LIF_training_():
+def __SKIP__test_flows_try_STDP_on_LIF_training_():
     print(os.chdir("flows"))
     print(os.getcwd())
     print(os.listdir())

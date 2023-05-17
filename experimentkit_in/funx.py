@@ -5,6 +5,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 import pickle
+import time
+
 import torch
 
 def compare_sample_from_data(
@@ -47,3 +49,14 @@ def pickle_load(fpath: str):
     return f
 
 
+def generate_random_name(length: str = 22, with_timestamp: bool = True) -> str:
+    bank = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    tstamp = str(time.time()).replace(".", "d") if with_timestamp else ""
+    to_len = length - len(tstamp)
+    if to_len < 0:
+        raise Exception(
+            "If you want generate a random name with time_stamp, " +
+            f"length must be greater than 18")
+    rand_chars = "".join(
+        [bank[ci] for ci in np.random.choice(len(bank), to_len)])
+    return f"{tstamp}-{rand_chars}"

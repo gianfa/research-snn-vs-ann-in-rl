@@ -15,7 +15,7 @@ X -> RNN -> y
 
 """
 import sys
-sys.path.append("../..")
+sys.path += ["..", "../..", "../../.."]
 
 import time
 import os
@@ -37,8 +37,8 @@ import torch.nn as nn  # noqa
 from torch.utils.data import Dataset, DataLoader, TensorDataset  # noqa
 from torchvision import datasets, transforms  # noqa
 
-from experimentkit.visualization import plot_n_examples
-from experimentkit.metricsreport import MetricsReport
+from experimentkit_in.visualization import plot_n_examples
+from experimentkit_in.metricsreport import MetricsReport
 
 # %% Helper functions
 

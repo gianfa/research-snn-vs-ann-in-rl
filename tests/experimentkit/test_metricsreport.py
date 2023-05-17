@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from experimentkit.metricsreport import MetricsReport
+from experimentkit_in.metricsreport import MetricsReport
 
 
 def test_MetricsReport__init():

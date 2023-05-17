@@ -32,7 +32,9 @@ class ESN(nn.Module):
             hidden_size: int,
             output_size: int,
             hidden_weights: torch.TensorType = None,
-            spectral_radius=0.9) -> None:
+            input_scaling: float = 1.,
+            # hidden_sparsity: float= 0,
+            spectral_radius=0.95) -> None:
         super(ESN, self).__init__()
         if (
             hidden_weights is not None and 
@@ -44,6 +46,7 @@ class ESN(nn.Module):
         self.hidden_size = hidden_size
         self.output_size = output_size
         self.spectral_radius = spectral_radius
+        self.input_scaling = input_scaling
 
         # TODO:
         #     maybe admit a W_in as a parameter,
@@ -51,12 +54,21 @@ class ESN(nn.Module):
         self.W_in = nn.Linear(input_size, hidden_size, bias=False)
         self.W = nn.Linear(hidden_size, hidden_size, bias=False)
         self.W_out = nn.Linear(hidden_size, output_size, bias=False)
+        for param in self.W_in.parameters():
+            param.requires_grad = False
+        for param in self.W.parameters():
+            param.requires_grad = False
+
+        self.hist = {}  # Last training history object
 
         self.init_weights(hidden_weights)
 
-    def init_weights(self, hidden_weights: torch.TensorType = None) -> None:
+    def init_weights(
+            self,
+            hidden_weights: torch.TensorType or str = "orthogonal") -> None:
+        # TODO: replace with https://pytorch.org/docs/stable/nn.init.html#torch.nn.init.orthogonal_
         nn.init.orthogonal_(self.W_in.weight)
-        if hidden_weights is None:
+        if hidden_weights is None or hidden_weights == "orthogonal":
             nn.init.orthogonal_(self.W.weight)
         else:
             self.W.weight.data = hidden_weights
@@ -64,20 +76,96 @@ class ESN(nn.Module):
             self.W.weight * (
                 self.spectral_radius / 
                     torch.max(
-                        torch.abs(torch.eig(self.W.weight).eigenvalues))))
+                        torch.abs(
+                            torch.linalg.eig(self.W.weight).eigenvalues))))
         nn.init.normal_(self.W_out.weight, std=0.01)
         return None
 
     def forward(self,
             input: torch.Tensor,
-            activation: Callable = torch.tanh) -> torch.Tensor:
+            activation: Callable = torch.tanh,
+        ) -> torch.Tensor:
+        assert input.ndim == 2, (
+            "input must be 2-dimensional: (time, features), " +
+            f"instead dims were {input.ndim}")
+        input *= self.input_scaling
+
+        # Compute Dynamics: Iteratively pass through the input and hidden
         time_length = input.shape[0]
         x = torch.zeros(self.hidden_size)
+        x_0 = x.clone() # storing for diagnosis
         for t in range(time_length):
+            # u [=] input.shape[1]
             u = input[t]  # current input
+            # x [=] hidden_size
             x = activation(self.W_in(u) + self.W(x))  # internal state
-        output = self.W_out(x) > 0
+
+        if bool(input.sum() != 0):
+            assert not x.equal(x_0), (
+                f"The dynamics was skipped (no weights changes). " +
+                "Check the code")
+            del x_0
+        # Last activations go to the output
+        # output [=] (output.shape, out_features) = (bs, out_features) 
+        output = self.W_out(x).unsqueeze(1)
         return output
+
+
+    def train(
+            self,
+            X: torch.TensorType,
+            Y: torch.TensorType,
+            epochs: int = 10,
+            optimizer: Callable = torch.optim.SGD,
+            lr: float = 4e-2,
+            criterion: Callable = torch.nn.MSELoss(),
+            activation: Callable = torch.tanh,
+            v: bool = False) -> None:
+        # TODO: add hooks for weights storage
+        # X [=] (n_batches, bs, in_features)
+        # Y [=] (n_batches, bs, out_features)
+        optimizer = optimizer(self.W_out.parameters(), lr=lr)
+        self.hist['losses'] = []
+        for epoch in range(epochs):
+            outs = []  # [=] n_batches
+            for X_i, Y_i in zip(X, Y):
+                X_i, Y_i = X_i.to(torch.float32), Y_i.to(torch.float32)
+                if X_i.ndim == 1: X_i = X_i.unsqueeze(0)  # expand as a row
+                if Y_i.ndim == 1: Y_i = Y_i.unsqueeze(0)  # expand as a row
+                # output [=] (output.shape, out_features) = (bs, out_features)
+                out = self.__call__(X_i, activation=activation)
+                loss = criterion(out, Y_i)
+
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+
+                self.hist['losses'].append(loss)
+                outs.append(out)
+            if v:
+                print(
+                    f"Weights after epoch {epoch}: " +
+                    f"{self.W_out.weight.data.mean()}")
+
+        # output [=] (n_batches, bs, out_features) 
+        outs = torch.stack(outs)
+
+        if v:
+            # TODO: move the importModule Error at the start of the fun
+            try:
+                fig, ax = plt.subplots()
+                ax.plot(
+                    torch.stack(self.hist['losses']).detach().numpy())
+                title = "Loss"
+                if isinstance(optimizer, torch.optim.Optimizer):
+                    title = f"{optimizer.__class__.__name__} {title}"
+                ax.set_title(f"{title}")
+                ax.set_xlabel("# iteration")
+                
+            except NameError as e:
+                print("WARN| Matplotlib not loaded or missing")
+        return
+        
 
 
 def define_spiking_cluster(

@@ -1,14 +1,15 @@
 [tool.poetry]
 name = "research-snn-vs-ann-in-rl"
-version = "0.1.0"
+version = "0.1.6a1"
 description = "Comparison of economics of choices between SNN and ANN in RL"
 authors = ["gianfa <gian.angelini@hotmail.com>"]
+packages = [{include = "stdp"}]
 
 [tool.poetry.dependencies]
-python = ">=3.9,<3.9.7 || >3.9.7,<4.0"
+python = ">=3.9,<3.9.7 || >3.9.7,<3.11"
 
 matplotlib = "^3.5.3"
-numpy = "^1.23.2"
+numpy = ">=1.20.0"
 pandas = "^1.4.4"
 snntorch = "^0.5.3"
 torchvision = "^0.13.1"
@@ -20,16 +21,18 @@ jupyter = "^1.0.0"
 ipykernel = "^6.20.2"
 daft = "^0.1.2"
 pyqt6 = "^6.4.1"
+tqdm = "^4.64.1"
+
+experimentkit = {path = "../experimentkit", develop = true}
 
 [tool.poetry.dev-dependencies]
 autopep8 = "^2.0.0"
 pytest = "^7.2.0"
-flake8 = "^5.0.4"
 jupyter = "^1.0.0"
 black = "^22.8.0"
 streamlit = "*"
 watchdog = "*"
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
+requires = ["poetry-core>=1.0.8"]
 build-backend = "poetry.core.masonry.api"
