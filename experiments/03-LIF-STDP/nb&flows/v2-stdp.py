@@ -45,6 +45,7 @@ sys.path += ["..", "../..", "../../.."]
 
 import time
 import os
+from pathlib import Path
 from typing import Dict, List
 import seaborn as sns
 import snntorch as snn  # noqa
@@ -65,7 +66,15 @@ import itertools  # noqa
 from experimentkit_in.metricsreport import MetricsReport
 from stdp.funx import stdp_step
 
-data_path = '../../data'
+# Project Parameters #
+ROOT_DIR = Path("../../../")
+DATA_DIR = ROOT_DIR/"data"
+EXP_DIR = ROOT_DIR/"experiments/LIF-STDP"
+EXP_DATA_DIR = EXP_DIR/'data'
+EXP_REPORT_DIR = EXP_DIR/'report'
+
+
+
 
 
 # %% Helper functions
@@ -127,7 +136,7 @@ def train_printer(
 batch_size = 32
 
 
-if not os.path.isdir(data_path):
+if not os.path.isdir(DATA_DIR):
     raise Exception("Data directory not found")
 
 dtype = torch.float
@@ -142,9 +151,9 @@ transform = transforms.Compose([
             transforms.Normalize((0,), (1,))])
 
 mnist_train = datasets.MNIST(
-    data_path, train=True, download=True, transform=transform)
+    DATA_DIR, train=True, download=True, transform=transform)
 mnist_test = datasets.MNIST(
-    data_path, train=False, download=True, transform=transform)
+    DATA_DIR, train=False, download=True, transform=transform)
 
 # Create DataLoaders
 train_loader = DataLoader(
