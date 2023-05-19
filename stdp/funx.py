@@ -256,8 +256,8 @@ def stdp_step(
 
         # dt_ij = t_pre - t_post
         dt_ij = (-torch.tensor(pre_post_spks).diff()).flatten()
-        dt_ij = torch.where(dt_ij>max_delta_t, max_delta_t, dt_ij)
-        dt_ij = torch.where(dt_ij<-max_delta_t, -max_delta_t, dt_ij)
+        dt_ij = torch.where(dt_ij > max_delta_t, max_delta_t, dt_ij)
+        dt_ij = torch.where(dt_ij < -max_delta_t, -max_delta_t, dt_ij)
         dt_ij = dt_ij.tolist()
         dw_ij = [T_lu[dt_ij] for dt_ij in dt_ij]
 
@@ -321,7 +321,7 @@ def raster_collect_spikes(
     """
     raster = torch.Tensor(raster)
     if connections is None:
-        connections = torch.ones_like(raster)
+        connections = torch.ones(raster.shape[0], raster.shape[0])
     else:
         connections = torch.Tensor(connections)
     if connections.shape[0] != connections.shape[1]:
@@ -339,6 +339,9 @@ def raster_collect_spikes(
         if post != pre:
             spks[pre, post]= collection_rule(raster[pre, :], raster[post, :])
     return spks
+
+
+
 
 
 def model_get_named_layer_params(
