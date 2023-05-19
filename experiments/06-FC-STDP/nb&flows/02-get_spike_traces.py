@@ -134,7 +134,6 @@ criterion = nn.CrossEntropyLoss(reduction='mean')
 optimizer = optim.SGD(model.parameters(), lr=0.01)
 activations, hooks = register_activations_hooks_to_layers(model)
 
-# Loop di allenamento
 for epoch in range(1):
     for i, X_y in enumerate(train_batch):
         X, y = X_y
@@ -161,10 +160,38 @@ activations = {layer_name: torch.stack(acts).squeeze()
 
 # Get spike traces
 traces = {li: acts > th for li, acts in activations.items()}
-""" {LAYER: tensor(nunits x steps)} """
+""" {LAYER: tensor(nbatches, nsteps, nunits)} """
+
+
+def traces_ensure_are_3_dim(traces: dict) -> dict:
+    return {
+        name:(trace if trace.ndim==3 else trace.unsqueeze(2))
+        for name, trace in traces.items()}
+
+
+def traces_contract_to_2_dim(traces: dict) -> dict:
+    """{LAYER: tensor(nbatches x nsteps, nunits)}"""
+    return {
+        name: trace.view(-1, trace.size(2))
+        for name, trace in traces_ensure_are_3_dim(traces).items()}
+
+
+def traces_to_tensor(traces: dict) -> dict:
+    return torch.vstack(
+        [trace.T for trace in traces_contract_to_2_dim(traces).values()])
+
+
+def activations_to_tensor(activations: dict) -> torch.Tensor:
+    return traces_to_tensor({li: acts > th for li, acts in activations.items()})
 
 
 
+
+# %%
+
+traces['layer1']
+
+# %%
 
 # %%
 exit()
