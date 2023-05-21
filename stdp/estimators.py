@@ -110,7 +110,6 @@ class ESN(nn.Module):
         output = self.W_out(x).unsqueeze(1)
         return output
 
-
     def train(
             self,
             X: torch.TensorType,
@@ -165,6 +164,13 @@ class ESN(nn.Module):
             except NameError as e:
                 print("WARN| Matplotlib not loaded or missing")
         return
+    
+    # TODO: test
+    def predict(self, X: torch.TensorType) -> torch.Tensor:
+        return torch.stack(
+            [self.__call__(
+            Xi.unsqueeze(0).to(torch.float32)).detach()
+                for Xi in X]).squeeze()
         
 
 
