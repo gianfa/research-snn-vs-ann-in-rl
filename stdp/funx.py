@@ -45,17 +45,23 @@ def stdp_dW(
     return dW
 
 
-def stdp_generate_dw_lookup(dt_max: int):
+def stdp_generate_dw_lookup(
+        dt_max: int, time_related=True):
     """
     """
-    T_lu = torch.arange(-dt_max, dt_max+1)
-    A_plus = 0.2
-    tau_plus = 5e-3
-    A_minus = 0.2
-    tau_minus = 4.8e-3
-    dw = stdp_dW(A_plus, A_minus, tau_plus, tau_minus, T_lu * 1e-5)
-    T_lu = {int(dt): float(dwi) for dt, dwi in zip(T_lu.numpy().tolist(), dw)}
-    T_lu[T_lu == 0] = 0
+    if time_related:
+        T_lu = torch.arange(-dt_max, dt_max+1)
+        A_plus = 0.2
+        tau_plus = 5e-3
+        A_minus = 0.2
+        tau_minus = 4.8e-3
+        dw = stdp_dW(A_plus, A_minus, tau_plus, tau_minus, T_lu * 1e-5)
+        T_lu = {int(dt): float(dwi) for dt, dwi in zip(T_lu.numpy().tolist(), dw)}
+        T_lu[T_lu == 0] = 0
+    else:
+        CONSTANT = 1.2
+        T_lu = torch.zeros(dt_max * 2 + 1)
+        T_lu[T_lu == 0] = CONSTANT #
     return T_lu
 
 
@@ -170,6 +176,7 @@ def stdp_step(
     bidirectional: bool = True,
     max_delta_t: int = 20,
     inplace: bool = False,
+    time_related: bool = True,
     v: bool = False,
 ) -> torch.Tensor:
     """Simplified STDP step
@@ -238,7 +245,7 @@ def stdp_step(
         pre_post = torch.argwhere(connections > 0).numpy().tolist()
         """Pre-post pairs"""
 
-    T_lu = stdp_generate_dw_lookup(max_delta_t)
+    T_lu = stdp_generate_dw_lookup(max_delta_t, time_related=time_related)
 
     # ## Compute all the dw ##
     hist = {
@@ -339,9 +346,6 @@ def raster_collect_spikes(
         if post != pre:
             spks[pre, post]= collection_rule(raster[pre, :], raster[post, :])
     return spks
-
-
-
 
 
 def model_get_named_layer_params(
