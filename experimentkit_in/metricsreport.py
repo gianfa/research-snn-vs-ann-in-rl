@@ -1,5 +1,5 @@
 import copy
-from typing import List
+from typing import List, Tuple
 
 import torch
 import matplotlib.pyplot as plt
@@ -23,7 +23,7 @@ class MetricsReport():
     2
     >>> m, n = mr.get_metrics(return_names=True)
 
-    # You can easily visualize metrics using pandas
+    # You can easily visualize metrics using pandas
     >>> import pandas as pd
     >>> ms, n = mr.get_metrics(return_names=True)
     >>> pd.DataFrame(ms, columns=n)
@@ -161,4 +161,36 @@ class MetricsReport():
             data=cm,
             annot=True,
             xticklabels=xticklabels, yticklabels=yticklabels, ax=ax, **kwargs)
+        return ax
+    
+    def plot_metrics(
+            self,
+            ax: plt.Axes =None,
+            ylim: Tuple[int, int] =(0,1),
+            smooth: bool =False,
+            show_highlights =True
+        ) -> plt.Axes:
+        if not ax:
+            fig, ax = plt.subplots()
+        fig = ax.figure
+
+        for name, m in self.metrics.items():
+            if name != 'n_samples':
+                if smooth == True:
+                    ax.plot(moving_average(m)[1:-1], label=name)
+                else:
+                    ax.plot(m, label=name)
+                if show_highlights:
+                    ax.axhline(
+                        max(m), label=f"max {name}",
+                        linewidth=0.5, linestyle='dashed', color='k')
+        
+        
+
+        ax.set(
+            title='Metrics',
+            ylim=ylim
+        )
+        ax.legend()
+        ax.grid(True)
         return ax

@@ -60,3 +60,11 @@ def generate_random_name(length: str = 22, with_timestamp: bool = True) -> str:
     rand_chars = "".join(
         [bank[ci] for ci in np.random.choice(len(bank), to_len)])
     return f"{tstamp}-{rand_chars}"
+
+
+def moving_average(signal: np.array, window_size: int = None) -> np.array:
+    if not window_size:
+        window_size = max(round(len(signal) * 0.05), 1)
+    window = np.ones(window_size) / window_size
+    smoothed_signal = np.convolve(signal, window, mode='same')
+    return smoothed_signal
