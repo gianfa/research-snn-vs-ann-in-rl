@@ -19,6 +19,7 @@ sys.path += ["..", "../..", "../../.."]
 
 import time
 import os
+from pathlib import Path
 from typing import Dict, List
 from itertools import combinations
 
@@ -39,6 +40,11 @@ from torchvision import datasets, transforms  # noqa
 
 from experimentkit_in.visualization import plot_n_examples
 from experimentkit_in.metricsreport import MetricsReport
+
+ROOT = Path('../../../')
+DATA_PATH = ROOT/'data'
+EXP_PATH = ROOT/'experiments/01-g2_RNN_ts/'
+EXP_DATA_PATH = EXP_PATH/'data'
 
 # %% Helper functions
 
@@ -89,7 +95,6 @@ def train_printer(
 # %% Dataset Creation: Signal definition
 
 batch_size = 64
-data_path = '../../data'
 
 w1 = 2
 w2 = w1 * 3
@@ -98,7 +103,7 @@ w4 = w3 * 3
 sig_length = 500
 
 
-if not os.path.isdir(data_path):
+if not os.path.isdir(EXP_DATA_PATH):
     raise Exception("Data directory not found")
 
 dtype = torch.float
