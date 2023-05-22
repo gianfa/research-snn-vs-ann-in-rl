@@ -1,3 +1,22 @@
+<style>
+    #header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.title {
+  font-size: 24px;
+  font-weight: bold;
+}
+
+.authors {
+  font-size: 18px;
+}
+</style>
+<div id="header">
+  <div class="title">Harnessing STDP for Optimized Neuromorphic Computing in Echo State Networks</div>
+  <div class="authors">Gianfrancesco Angelini, Andrea Duggento, Nicola Toschi</div>
+</div>
 
 - [INTRODUCTION](#introduction)
 - [METHODS](#methods)
@@ -5,12 +24,17 @@
   - [Spike-Timing Dependent Plasticity](#spike-timing-dependent-plasticity)
   - [Training](#training)
 - [Results](#results)
+- [Conclusions](#conclusions)
 - [Next](#next)
 - [References](#references)
 
 ## INTRODUCTION
 
-Neuromorphing computing is an emerging field that aims to develop computer systems inspired by the human brain. Echo State Networks (ESNs) are a class of recurrent neural networks used successfully in signal processing applications. In this poster, we explore the use of learning with STDP (Spike-Timing Dependent Plasticity) within the reservoir of an ESN as a potential optimisation candidate for neuromorphing computing.​
+Neuromorphing computing is an emerging field that aims to develop computer systems inspired by the human brain. Echo State Networks (ESNs) are a class of recurrent neural networks used successfully in signal processing applications. 
+Several studies show that, in SNNs, STDP can lead to significant improvements in network performances , such as reducing the number of epochs required for training [Yusoff et al., 2014] and capturing causal patterns in time-varying signals [Duggento et al., 2021].
+
+However, currently, STDP is relegated to simulation frameworks with biological scope, and is heavily under-exploited in 2nd generation, or “classical”, neural networks. This may be due, amongst other factors, to the lack of accessible tools for incorporating STDP in ANN training mechanisms.
+In this poster, we explore the use of learning with STDP (Spike-Timing Dependent Plasticity) within the reservoir of an ESN as a potential optimisation candidate for neuromorphing computing. Furthermore we present an easy-to-adopt Pytorch implementation of STDP in the form of an optimizer.
 
 ## METHODS
 
@@ -46,13 +70,12 @@ An optimisation based on SGD (Stochastic Gradient Descent) acts on the Readout, 
 ## Results
 Our study shows that using STDP in the reservoir of an ESN can lead to consistent and effective training, as shown in the pictures below.  
 
-\[\@GIAN: TO FURTHER ELABORATE\]
-  
-
 <img src='./imgs/Res-ESN-STDP-compare-output_pred.png'>
+
+
 <img src='./imgs/Res-ESN-STDP-loss.png'>
 
-## Conclusions
+## Conclusions
 Our study shows that the use of STDP in the reservoir of an ESN can lead to coherent and effective training. These preliminary results underline the potential of this technique as an optimisation candidate in neuromorphing computing. In the future, learning with STDP in the reservoir could provide an interface for the development of hybrid applications on next-generation neural networks. This work contributes to the advancement of the field of neuromorphing computing, opening new perspectives for the realisation of systems inspired by the human brain.
 
 ## Next
@@ -63,3 +86,4 @@ Our study shows that the use of STDP in the reservoir of an ESN can lead to cohe
 2. SJÖSTRÖM, Jesper, et al. Spike-timing dependent plasticity. Spike-timing dependent plasticity, 2010, 35.0: 0-0.
 3. YUSOFF, Mohd-Hanif; JIN, Yaochu. Modeling neural plasticity in echo state networks for time series prediction. In: 2014 14th UK Workshop on Computational Intelligence (UKCI). IEEE, 2014. p. 1-7.
 4. SOH, Harold; DEMIRIS, Yiannis. Spatio-temporal learning with the online finite and infinite echo-state Gaussian processes. IEEE transactions on neural networks and learning systems, 2014, 26.3: 522-536.
+5. DUGGENTO, Andrea; GUERRISI, Maria; TOSCHI, Nicola. Echo state network models for nonlinear granger causality. Philosophical Transactions of the Royal Society A, 2021, 379.2212: 20200256.
