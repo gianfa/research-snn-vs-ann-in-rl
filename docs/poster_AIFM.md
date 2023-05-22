@@ -1,7 +1,5 @@
-<div id="header" style='text-align: center; margin-bottom: 40px'>
-  <div style="font-size: 24px; font-weight: bold">Harnessing STDP for Optimized Neuromorphic Computing in Echo State Networks</div>
-  <div style="font-size: 18px;">Gianfrancesco Angelini, Andrea Duggento, Nicola Toschi</div>
-</div>
+# Harnessing STDP for Optimized Neuromorphic Computing in Echo State Networks
+Gianfrancesco Angelini, Andrea Duggento, Nicola Toschi
 
 - [INTRODUCTION](#introduction)
 - [METHODS](#methods)
