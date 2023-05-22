@@ -25,6 +25,7 @@ Results
 # %% Imports
 import itertools
 from functools import partial
+from pathlib import Path
 import sys
 from typing import List
 
@@ -45,6 +46,11 @@ from stdp.spike_collectors import all_to_all, nearest_pre_post_pair
 
 from experimentkit_in.metricsreport import MetricsReport
 
+ROOT = Path('../../../')
+DATA_DIR = ROOT/'data'
+EXP_DIR = ROOT/'experiments/06-FC-STDP'
+EXP_DATA_DIR = EXP_DIR/'data'
+EXP_REPORT_DIR = EXP_DIR/'report'
 
 # %% Helpers
 
@@ -64,7 +70,8 @@ def register_activations_hooks_to_layers(
 
     def get_activations(layer, input, output, label: str):
         if steps_to_reset and len(activations[label]) >= steps_to_reset:
-            activations[label].clear()
+            # activations[label].clear()
+            activations[label] = activations[label][-1:]
         activations[label].append(output)
 
     activations = init_activations()
@@ -129,7 +136,7 @@ layer_names = [name for name, _ in model.named_modules() if len(name) > 0]
 
 # param: STDP
 th = 0  # spike threshold
-activate_STDP = False
+activate_STDP = True
 
 # param: optimisation
 criterion = nn.MSELoss()
@@ -144,7 +151,7 @@ if 'hooks' in locals():
     del hooks
 
 activations, hooks = register_activations_hooks_to_layers(
-    model, layers=['W'], steps_to_reset=1)
+    model, layers=['W'], steps_to_reset=5)
 
 train_mr = MetricsReport()
 valid_mr = MetricsReport()
@@ -152,7 +159,7 @@ loss_hist = []
 test_loss_hist = []
 traces = []
 t_start = time.time()
-for epoch in range(20):
+for epoch in range(13):
     for i, X_i_Y_i in enumerate(zip(X_train, y_train)):
         X_i, Y_i = X_i_Y_i
         X_i, Y_i = X_i.to(torch.float32), Y_i.to(torch.float32)
@@ -166,9 +173,9 @@ for epoch in range(20):
         optimizer.step()
 
         if activate_STDP:
-            traces.append(src_funx.activations_to_traces(activations, th))
-            if epoch > 0 and epoch % 5 == 0:
-                raster = torch.stack(traces).squeeze().T
+            if epoch > 0 and epoch % 4 == 0: # check ste_to_reset in register
+                traces = src_funx.activations_to_traces(activations, th)
+                raster = traces.T # torch.stack(traces).squeeze().T
                 spks = stdp_f.raster_collect_spikes(
                     raster, collection_rule=all_to_all)
                 # update hidden connections
@@ -182,13 +189,11 @@ for epoch in range(20):
                     spike_collection_rule = all_to_all,
                     dw_rule = "sum",
                     max_delta_t=4,
-                    time_related=True
                 )
                 # update weights normalizing them
                 new_layer_W = nn.Parameter(new_layer_W)#/new_layer_W.max())
                 layer.weight = new_layer_W
                 assert getattr(model, layer_name).weight.equal(new_layer_W)
-                traces.clear()
                 print("STDP executed")
         
         
@@ -202,11 +207,23 @@ for epoch in range(20):
 fig, ax = plt.subplots()
 ax.plot(loss_hist)
 ax.set_title('Loss')
+ax.set_xlabel('# iteration')
+ax.set_yscale('log')
+ax.grid()
+fig.savefig(EXP_DATA_DIR/"ESN-STDP-loss.png")
+fig.savefig(EXP_REPORT_DIR/"ESN-STDP-loss.png")
 
 fig, ax = plt.subplots()
 y_pred = model.predict(X_test)
 ax.plot(y_test, label='y_test')
 ax.plot(y_pred, label='y_pred')
+ax.set(
+    title='Test signal vs Predicted signal',
+    xlabel='t'
+)
 ax.grid()
 ax.legend()
+fig.savefig(EXP_DATA_DIR/"ESN-STDP-compare-output_pred.png")
+fig.savefig(EXP_REPORT_DIR/"ESN-STDP-compare-output_pred.png")
+
 # %%

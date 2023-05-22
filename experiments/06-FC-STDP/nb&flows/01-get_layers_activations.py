@@ -39,7 +39,7 @@ hooks.append(net.layer1.register_forward_hook(partial(get_activations, label='L1
 hooks.append(net.layer2.register_forward_hook(partial(get_activations, label='L2')))
 hooks.append(net.layer3.register_forward_hook(partial(get_activations, label='L3')))
 
-
+# %%
 
 # Esecuzione dell'inoltro attraverso la rete
 out = net(input_tensor)
@@ -55,6 +55,8 @@ for layer_name, activation in activations.items():
 # Threshold to get the spikes
 spks = {li: act > 0 for li, act in activations.items()}
 print(spks)
+# %%
+
 
 
 for name, param in net.named_parameters():
