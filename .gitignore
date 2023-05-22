@@ -9,6 +9,7 @@
 .conda*
 imgs
 data
+!docs/imgs
 !**/experiments/LIF/data
 !**/experiments/LIF/imgs/
 
