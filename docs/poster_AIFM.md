@@ -5,6 +5,7 @@
   - [Spike-Timing Dependent Plasticity](#spike-timing-dependent-plasticity)
   - [Training](#training)
 - [Results](#results)
+- [Next](#next)
 - [References](#references)
 
 ## INTRODUCTION
@@ -52,6 +53,9 @@ Our study shows that using STDP in the reservoir of an ESN can lead to consisten
 <img src='./imgs/Res-ESN-STDP-loss.png'>
 
 ## Conclusions
+Our study shows that the use of STDP in the reservoir of an ESN can lead to coherent and effective training. These preliminary results underline the potential of this technique as an optimisation candidate in neuromorphing computing. In the future, learning with STDP in the reservoir could provide an interface for the development of hybrid applications on next-generation neural networks. This work contributes to the advancement of the field of neuromorphing computing, opening new perspectives for the realisation of systems inspired by the human brain.
+
+## Next
 
 
 ## References
