@@ -1,9 +1,9 @@
 
 - [INTRODUCTION](#introduction)
 - [METHODS](#methods)
-  - [The Echo State Network](#the-echo-state-network)
-  - [The Spike-Timing Dependent Plasticity](#the-spike-timing-dependent-plasticity)
-  - [The Training](#the-training)
+  - [Echo State Network](#echo-state-network)
+  - [Spike-Timing Dependent Plasticity](#spike-timing-dependent-plasticity)
+  - [Training](#training)
 - [Results](#results)
 - [References](#references)
 
@@ -13,7 +13,7 @@ Neuromorphing computing is an emerging field that aims to develop computer syste
 
 ## METHODS
 
-### The Echo State Network
+### Echo State Network
 The ESN architecture typically consists of 3 layers: Input, Reservoir and Readout.
 The Reservoir is a layer in which all neurons are considered to be connected to each other, and whose synaptic weights are not trainable.
 The Readout is a Linear layer connected to all neurons in the Reservoir and is the only one subject to training.
@@ -26,7 +26,7 @@ The activation function used during a neural network execution step is a *tanh*.
 <img src='./imgs/ESN_scheme-SOH-2014.png'>
 [SOH, 2014]
 
-### The Spike-Timing Dependent Plasticity
+### Spike-Timing Dependent Plasticity
 STDP (Spike-Timing Dependent Plasticity) is a learning rule that governs the synaptic plasticity in neural networks. It allows neural networks to continually update their connections and adapt to changes in the environment or input statistics, enhancing their flexibility and ability to learn and respond to new information.
 Basically it states that the strength of a synapse between two neurons is modified based on the precise timing of their spiking activity. Specifically, if the presynaptic neuron
 if the presynaptic neuron fires before the postsynaptic one, the synapse strengthens, otherwise the opposite happens.
@@ -34,8 +34,9 @@ if the presynaptic neuron fires before the postsynaptic one, the synapse strengt
 [SJÖSTRÖM, 2010]
 
 
-### The Training
-A regression dataset, with controlled dimensionality and characteristics, is created using scikit-learn. A train/test split of 20% is then applied.
+### Training
+The experiment was conducted on a supervised learning regression task, where a multidimensional time series was provided as input, and the objective was to predict a unidimensional time series as output. The dataset was generated algorithmically using scikit-learn.  
+A train/test split of 20% is then applied.
 The entire dataset is shown to the network several times (epochs) and at certain intervals of epochs, the STDP acts on the reservoir.
 A logic was implemented for recording the reservoir activations, decoupled from the network implementation itself. During training, these activations are thresholded, with threshold equal to 0, and accumulated in a variable that will then contain the *traces* of the spikes.
 A function takes care of taking these traces, applying the optimised version of the STDP and returning the new weight matrix of the Reservoir, which will finally be assigned to it.
@@ -49,6 +50,9 @@ Our study shows that using STDP in the reservoir of an ESN can lead to consisten
 
 <img src='./imgs/Res-ESN-STDP-compare-output_pred.png'>
 <img src='./imgs/Res-ESN-STDP-loss.png'>
+
+## Conclusions
+
 
 ## References
 1. BI, Guo-qiang; POO, Mu-ming. Synaptic modification by correlated activity: Hebb's postulate revisited. Annual review of neuroscience, 2001, 24.1: 139-166.
