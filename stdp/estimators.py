@@ -173,6 +173,79 @@ class ESN(nn.Module):
                 for Xi in X]).squeeze()
         
 
+class BaseESN(nn.Module):
+    def __init__(
+            self,
+            input_size: int,
+            reservoir_size: int,
+            output_size: int,
+            spectral_radius: float = 0.9,
+            connections: torch.Tensor = None,
+            connectivity: float = 0.3):
+        self.input_size = input_size
+        self.reservoir_size = reservoir_size
+        self.output_size = output_size
+        self.spectral_radius = spectral_radius
+        self.connections = connections
+        self.connectivity = connectivity
+
+        # Weights initialization
+        self.W_in = (torch.rand(reservoir_size, input_size) - 0.5).float()
+        self.W = (torch.rand(reservoir_size, reservoir_size) - 0.5).float()
+        self.W_out = None
+
+        # Weights scaling
+        self.W_in *= 2.0
+        self.W *= 2.0
+
+        if self.connections is None:
+            # Random connection in reservoir
+            self.connections = generate_random_connections_mask(
+                (reservoir_size, reservoir_size), self.connectivity).float()
+            # mask = generate_simple_circle_connections_mask(
+            #     (reservoir_size, reservoir_size))
+            print(self.connections.shape)
+        
+        self.W *= self.connections
+
+        # spectral radius
+        max_eigenvalue = torch.max(torch.abs(torch.eig(self.W).eigenvalues))
+        self.W /= max_eigenvalue / spectral_radius
+
+    def train(self, inputs, targets, washout=100):
+        # X: reservoir states
+        X = torch.zeros((self.reservoir_size, inputs.shape[0])).float()
+
+        # Reservoir Feedforward
+        for t in range(1, inputs.shape[0]):
+            X[:, t] = torch.tanh(
+                torch.matmul(self.W_in, inputs[t]) +
+                torch.matmul(self.W, X[:, t-1].T))
+
+        # Apply the initial Washout
+        X = X[:, washout:]
+
+        # Train the Readout
+        self.W_out = torch.matmul(
+            torch.pinverse(X).T, targets[washout:].float())
+        return X
+
+    def predict(self, inputs):
+        X = torch.zeros((self.reservoir_size, inputs.shape[0])).float()
+
+        # Reservoir Feedforward
+        for t in range(1, inputs.shape[0]):
+            X[:, t] = torch.tanh(
+                torch.matmul(self.W_in, inputs[t]) +
+                torch.matmul(self.W, X[:, t-1].T))
+
+        # Output prediction
+        predictions = torch.matmul(X.T, self.W_out)
+        return predictions
+
+
+
+
 
 def define_spiking_cluster(
     tot_neurons: int = 100,

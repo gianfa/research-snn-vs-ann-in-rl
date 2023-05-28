@@ -22,11 +22,27 @@ from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 import torch.nn.functional as F
 
-from stdp.spike_collectors import all_to_all
+from stdp.spike_collectors import all_to_all, nearest_pre_post_pair
 from stdp.tut_utils import *
 
 sys.path.append("../")
 
+
+def generate_random_connections_mask(
+        shape: tuple, density: float) -> torch.Tensor:
+    mask = torch.rand(shape[0], shape[1])
+    mask[mask > density] = 0
+    return mask
+
+
+def generate_simple_circle_connections_mask(shape: tuple) -> torch.Tensor:
+    mask = torch.diag(torch.rand(shape[0] - 1), diagonal=-1)
+    mask[0, -1] = torch.rand(1)
+    return mask
+
+
+
+# STDP
 
 def stdp_dW(
     A_plus: float,
@@ -228,9 +244,6 @@ def stdp_step(
     if raster.nelement() == 0:
         if v: print("stdp_step| Warning: the raster is empty")
         return weights
-    W = weights
-    if not inplace:
-        W = weights.clone()
     # if connections is not None: (Nearest Neighbors)
     # (All-to-all)
     if connections is None:
@@ -245,8 +258,14 @@ def stdp_step(
         pre_post = torch.argwhere(connections > 0).numpy().tolist()
         """Pre-post pairs"""
 
-    T_lu = stdp_generate_dw_lookup(max_delta_t, time_related=time_related)
+    W = weights
+    if not inplace:
+        W = weights.clone()
+    # apply connections mask
+    W *=  (connections != 0).int()
 
+    T_lu = stdp_generate_dw_lookup(max_delta_t, time_related=time_related)
+    print(f"nonzero: {(W != 0).int().sum()}")
     # ## Compute all the dw ##
     hist = {
         'tpre_tpost': {},
@@ -402,6 +421,7 @@ def model_layers_to_weights(
 def connections_to_digraph(
     connections: torch.Tensor,
     show: bool = True,
+    relabel = False,
     ax: plt.Axes = None
 ) -> nx.MultiDiGraph:
     # TODO: fix position of the neurons
@@ -409,9 +429,11 @@ def connections_to_digraph(
         connections.numpy(),
         parallel_edges=True, create_using=nx.MultiDiGraph()
     )
-    label_mapping = {
-        i: string.ascii_lowercase[i] for i in range(connections.shape[0])}
-    G = nx.relabel_nodes(G, label_mapping)
+
+    if relabel:
+        label_mapping = {
+            i: string.ascii_lowercase[i] for i in range(connections.shape[0])}
+        G = nx.relabel_nodes(G, label_mapping)
     G.edges(data=True)
 
     if show:
@@ -547,7 +569,69 @@ def get_raster_from_tpre_tpost(
     )
 
 
+def plot_most_changing_node_weights(
+    W_hist: torch.Tensor,
+    n_top_weights: int = 5,
+    axs: List[plt.Axes] = None
+):
+    if type(W_hist) == torch.Tensor:
+        W_hist = W_hist.detach().numpy()
 
+    if axs is None:
+        _, axs = plt.subplots(2, 1)
+    fig = axs[0].figure
+
+    abs_diff = np.abs( np.diff(W_hist, axis=0) ).sum(axis=0)
+    if abs_diff.sum() == 0:
+        print("INFO: No difference between W along hist")
+    else:
+        flat_indices = np.argsort(abs_diff, axis=None)[-n_top_weights:]
+        row_indices, col_indices = np.unravel_index(
+            flat_indices, abs_diff.shape)
+
+    for ri, ci in zip(row_indices, col_indices):
+        axs[0].plot(W_hist[:, ri, ci], "-o", label=f"{ri} -> {ci}")
+    axs[0].grid()
+    axs[0].legend()
+    axs[0].set(
+        title=f'Top {n_top_weights} changing weights',
+        xlabel=f"# epoch"
+    )
+
+    # Plot Topology
+    nodes = set(col_indices.tolist() + row_indices.tolist()); print(nodes)
+    edges = [(row, col) for row, col in zip(row_indices, col_indices)]
+    G = nx.DiGraph()
+    G.add_nodes_from(nodes)
+    G.add_edges_from(edges)
+    pos = nx.spring_layout(G)  # Posizionamento dei nodi nel layout
+
+    nx.draw_networkx(G, pos, with_labels=True, arrows=True, ax=axs[1])
+    axs[1].set(title='Topology of the most changing weights')
+    
+    fig.tight_layout()
+    return axs
+
+
+#
+
+
+def single_index_to_coordinate(index, num_columns):
+    row = index // num_columns
+    col = index % num_columns
+    return row, col
+
+
+def generate_sparse_matrix(shape, density, values_f=torch.rand):
+    num_elements = int(shape[0] * shape[1] * density)
+    indices = torch.randperm(shape[0] * shape[1])[:num_elements]
+    indices = torch.Tensor([
+        single_index_to_coordinate(i, shape[1]) for i in indices])
+    values = values_f(num_elements)
+    matrix = torch.sparse_coo_tensor(indices.T, values, torch.Size(shape))
+    return matrix
+
+#
 
 
 def plot_raster(
@@ -670,3 +754,83 @@ def plot_composed_rasters_from_tpre_tpost_groups(
             linelengths=linelengths
         )
     return ax
+
+
+# STDP Helpers #
+
+
+def get_named_layer_parameters(model: nn.Module, layer_name: str) -> dict:
+    return {l_name: l_par for l_name, l_par in model.named_parameters()
+            if l_name == layer_name}
+
+
+def get_named_layer(model: nn.Module, layer_name: str) -> dict:
+    return [l[1] for l in model.named_modules() if l[0] == layer_name][0]
+
+
+def register_activations_hooks_to_layers(
+        model: nn.Module,
+        steps_to_reset: int or None = None, v: bool = False) -> \
+    List[torch.utils.hooks.RemovableHandle]:
+
+    def init_activations() -> dict:
+        return {
+            name: [] for name, _ in model.named_modules() if len(name) > 0}
+
+    def get_activations(layer, input, output, label: str):
+        if steps_to_reset and len(activations[label]) >= steps_to_reset:
+            activations[label].clear()
+        activations[label].append(output)
+
+    activations = init_activations()
+
+    hooks = []
+    for name, layer in model.named_modules():
+        if len(name) > 0:
+            hooks.append(
+                layer.register_forward_hook(
+                partial(get_activations, label=name)))
+            if v: print(f"Registered hook to layer: {name}")
+    return activations, hooks
+
+
+def activations_as_tensors(activations: dict):
+    return {layer_name: torch.vstack(acts)
+                for layer_name, acts in activations.items()}
+
+
+def traces_ensure_are_3_dim(traces: dict) -> dict:
+    return {
+        name:(trace if trace.ndim==3 else trace.unsqueeze(2))
+        for name, trace in traces.items()}
+
+
+def traces_contract_to_2_dim(traces: dict) -> dict:
+    """{LAYER: tensor(nbatches x nsteps, nunits)}"""
+    return {
+        name: trace.view(-1, trace.size(2))
+        for name, trace in traces_ensure_are_3_dim(traces).items()}
+
+
+def layertraces_to_traces(traces: dict) -> dict:
+    return torch.vstack(
+        [trace.T for trace in traces_contract_to_2_dim(traces).values()])
+
+
+def activations_to_traces(activations: dict, th: float) -> torch.Tensor:
+    acts_tens = activations_as_layertraces(activations, th)
+    return layertraces_to_traces(acts_tens)
+
+
+def activations_as_layertraces(activations: dict, th: float) -> dict:
+    return {layer_name: torch.vstack(acts) > th
+                for layer_name, acts in activations.items()}
+
+
+def activations_to_traces(activations: dict, th: float) -> torch.Tensor:
+    return  torch.hstack( list(
+                    activations_as_layertraces(activations, th).values()))
+
+
+def clear_activations(activations: dict) -> dict:
+    return {name: [] for name, acts in activations.items()}
