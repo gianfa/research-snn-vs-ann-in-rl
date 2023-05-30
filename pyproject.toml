@@ -24,6 +24,7 @@ pyqt6 = "^6.4.1"
 tqdm = "^4.64.1"
 
 experimentkit = {path = "../experimentkit", develop = true}
+plotly = "^5.14.1"
 
 [tool.poetry.dev-dependencies]
 autopep8 = "^2.0.0"
