@@ -209,7 +209,8 @@ class BaseESN(nn.Module):
         self.W *= self.connections
 
         # spectral radius
-        max_eigenvalue = torch.max(torch.abs(torch.eig(self.W).eigenvalues))
+        max_eigenvalue = torch.max(
+            torch.abs(torch.linalg.eig(self.W).eigenvalues))
         self.W /= max_eigenvalue / spectral_radius
 
     def train(self, inputs, targets, washout=100):
