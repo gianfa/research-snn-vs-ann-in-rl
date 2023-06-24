@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="refresh" content="5">
+    <title>DVC Plot</title>
+    
+
+    <script src="https://cdn.jsdelivr.net/npm/vega@5.20.2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega-lite@5.2.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega-embed@6.18.2"></script>
+    
+    <style>
+        table {
+            border-spacing: 15px;
+        }
+    </style>
+</head>
+<body>
+    
+        <div id="params_yaml" style="text-align: center; padding: 10x">
+            <p>params_yaml</p>
+            <div style="display: flex;justify-content: center;">
+                <table>
+<thead>
+<tr><th style="text-align: right;">  trials</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: right;">      20</td></tr>
+</tbody>
+</table>
+            </div>
+        </div>
+
+        <div id="metrics_json" style="text-align: center; padding: 10x">
+            <p>metrics_json</p>
+            <div style="display: flex;justify-content: center;">
+                <table>
+<thead>
+<tr><th style="text-align: right;">    mse</th><th style="text-align: right;">    mae</th><th style="text-align: right;">     r2</th><th style="text-align: right;">  step</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: right;">1684.25</td><td style="text-align: right;">2.55537</td><td style="text-align: right;">-22.205</td><td style="text-align: right;">     0</td></tr>
+</tbody>
+</table>
+            </div>
+        </div>
+
+    <div id = "static_mse">
+        <script type = "text/javascript">
+            var spec = {"$schema": "https://vega.github.io/schema/vega-lite/v5.json", "data": {"values": [{"step": "0", "mse": "58.664394", "rev": "workspace"}, {"step": "0", "mse": "2.420925", "rev": "workspace"}, {"step": "0", "mse": "3.1663613", "rev": "workspace"}, {"step": "0", "mse": "4.144239", "rev": "workspace"}, {"step": "0", "mse": "0.3723698", "rev": "workspace"}, {"step": "0", "mse": "1.1351982", "rev": "workspace"}, {"step": "0", "mse": "0.4369607", "rev": "workspace"}, {"step": "0", "mse": "0.658195", "rev": "workspace"}, {"step": "0", "mse": "8.864096", "rev": "workspace"}, {"step": "0", "mse": "4.2238092", "rev": "workspace"}, {"step": "0", "mse": "0.51076174", "rev": "workspace"}, {"step": "0", "mse": "3.906306", "rev": "workspace"}, {"step": "0", "mse": "1.7418011", "rev": "workspace"}, {"step": "0", "mse": "2.6104164", "rev": "workspace"}, {"step": "0", "mse": "11.611555", "rev": "workspace"}, {"step": "0", "mse": "2.2501416", "rev": "workspace"}, {"step": "0", "mse": "2.9599984", "rev": "workspace"}, {"step": "0", "mse": "3.5126755", "rev": "workspace"}, {"step": "0", "mse": "1.1933051", "rev": "workspace"}, {"step": "0", "mse": "1684.2509", "rev": "workspace"}]}, "title": "mse", "width": 300, "height": 300, "params": [{"name": "smooth", "value": 0.001, "bind": {"input": "range", "min": 0.001, "max": 1, "step": 0.001}}], "layer": [{"mark": "line", "encoding": {"x": {"field": "step", "type": "quantitative", "title": "step"}, "y": {"field": "mse", "type": "quantitative", "title": "mse", "scale": {"zero": false}}, "color": {"field": "rev", "type": "nominal"}, "tooltip": [{"field": "step", "title": "step", "type": "quantitative"}, {"field": "mse", "title": "mse", "type": "quantitative"}]}, "transform": [{"loess": "mse", "on": "step", "groupby": ["rev", "filename", "field", "filename::field"], "bandwidth": {"signal": "smooth"}}]}, {"mark": {"type": "line", "opacity": 0.2}, "encoding": {"x": {"field": "step", "type": "quantitative", "title": "step"}, "y": {"field": "mse", "type": "quantitative", "title": "mse", "scale": {"zero": false}}, "color": {"field": "rev", "type": "nominal"}, "tooltip": [{"field": "step", "title": "step", "type": "quantitative"}, {"field": "mse", "title": "mse", "type": "quantitative"}]}}, {"mark": {"type": "circle", "size": 10, "tooltip": {"content": "encoding"}}, "encoding": {"x": {"aggregate": "max", "field": "step", "type": "quantitative", "title": "step"}, "y": {"aggregate": {"argmax": "step"}, "field": "mse", "type": "quantitative", "title": "mse", "scale": {"zero": false}}, "color": {"field": "rev", "type": "nominal"}}}]};
+            vegaEmbed('#static_mse', spec);
+        </script>
+    </div>
+    
+
+    <div id = "static_r2">
+        <script type = "text/javascript">
+            var spec = {"$schema": "https://vega.github.io/schema/vega-lite/v5.json", "data": {"values": [{"step": "0", "r2": "0.19174335810394405", "rev": "workspace"}, {"step": "0", "r2": "0.9666453779257446", "rev": "workspace"}, {"step": "0", "r2": "0.956375033114324", "rev": "workspace"}, {"step": "0", "r2": "0.9429021869741914", "rev": "workspace"}, {"step": "0", "r2": "0.9948696254525977", "rev": "workspace"}, {"step": "0", "r2": "0.9843596539123994", "rev": "workspace"}, {"step": "0", "r2": "0.9939797150172103", "rev": "workspace"}, {"step": "0", "r2": "0.9909316295441489", "rev": "workspace"}, {"step": "0", "r2": "0.8778737356890166", "rev": "workspace"}, {"step": "0", "r2": "0.941805898303501", "rev": "workspace"}, {"step": "0", "r2": "0.9929629117586873", "rev": "workspace"}, {"step": "0", "r2": "0.9461803417343837", "rev": "workspace"}, {"step": "0", "r2": "0.9760021009505633", "rev": "workspace"}, {"step": "0", "r2": "0.9640346376327802", "rev": "workspace"}, {"step": "0", "r2": "0.8400202623451598", "rev": "workspace"}, {"step": "0", "r2": "0.9689983701252072", "rev": "workspace"}, {"step": "0", "r2": "0.9592182262772209", "rev": "workspace"}, {"step": "0", "r2": "0.9516036393308672", "rev": "workspace"}, {"step": "0", "r2": "0.9835590770721325", "rev": "workspace"}, {"step": "0", "r2": "-22.204992455957573", "rev": "workspace"}]}, "title": "r2", "width": 300, "height": 300, "params": [{"name": "smooth", "value": 0.001, "bind": {"input": "range", "min": 0.001, "max": 1, "step": 0.001}}], "layer": [{"mark": "line", "encoding": {"x": {"field": "step", "type": "quantitative", "title": "step"}, "y": {"field": "r2", "type": "quantitative", "title": "r2", "scale": {"zero": false}}, "color": {"field": "rev", "type": "nominal"}, "tooltip": [{"field": "step", "title": "step", "type": "quantitative"}, {"field": "r2", "title": "r2", "type": "quantitative"}]}, "transform": [{"loess": "r2", "on": "step", "groupby": ["rev", "filename", "field", "filename::field"], "bandwidth": {"signal": "smooth"}}]}, {"mark": {"type": "line", "opacity": 0.2}, "encoding": {"x": {"field": "step", "type": "quantitative", "title": "step"}, "y": {"field": "r2", "type": "quantitative", "title": "r2", "scale": {"zero": false}}, "color": {"field": "rev", "type": "nominal"}, "tooltip": [{"field": "step", "title": "step", "type": "quantitative"}, {"field": "r2", "title": "r2", "type": "quantitative"}]}}, {"mark": {"type": "circle", "size": 10, "tooltip": {"content": "encoding"}}, "encoding": {"x": {"aggregate": "max", "field": "step", "type": "quantitative", "title": "step"}, "y": {"aggregate": {"argmax": "step"}, "field": "r2", "type": "quantitative", "title": "r2", "scale": {"zero": false}}, "color": {"field": "rev", "type": "nominal"}}}]};
+            vegaEmbed('#static_r2', spec);
+        </script>
+    </div>
+    
+
+    <div id = "static_mae">
+        <script type = "text/javascript">
+            var spec = {"$schema": "https://vega.github.io/schema/vega-lite/v5.json", "data": {"values": [{"step": "0", "mae": "1.1227674", "rev": "workspace"}, {"step": "0", "mae": "0.95044744", "rev": "workspace"}, {"step": "0", "mae": "0.8681473", "rev": "workspace"}, {"step": "0", "mae": "0.68779683", "rev": "workspace"}, {"step": "0", "mae": "0.4143559", "rev": "workspace"}, {"step": "0", "mae": "0.6326459", "rev": "workspace"}, {"step": "0", "mae": "0.4371768", "rev": "workspace"}, {"step": "0", "mae": "0.5790645", "rev": "workspace"}, {"step": "0", "mae": "0.9942022", "rev": "workspace"}, {"step": "0", "mae": "0.651864", "rev": "workspace"}, {"step": "0", "mae": "0.50442195", "rev": "workspace"}, {"step": "0", "mae": "0.7356928", "rev": "workspace"}, {"step": "0", "mae": "1.2012807", "rev": "workspace"}, {"step": "0", "mae": "0.84582406", "rev": "workspace"}, {"step": "0", "mae": "0.8678069", "rev": "workspace"}, {"step": "0", "mae": "0.58475435", "rev": "workspace"}, {"step": "0", "mae": "0.83916736", "rev": "workspace"}, {"step": "0", "mae": "1.4018607", "rev": "workspace"}, {"step": "0", "mae": "0.8781306", "rev": "workspace"}, {"step": "0", "mae": "2.5553687", "rev": "workspace"}]}, "title": "mae", "width": 300, "height": 300, "params": [{"name": "smooth", "value": 0.001, "bind": {"input": "range", "min": 0.001, "max": 1, "step": 0.001}}], "layer": [{"mark": "line", "encoding": {"x": {"field": "step", "type": "quantitative", "title": "step"}, "y": {"field": "mae", "type": "quantitative", "title": "mae", "scale": {"zero": false}}, "color": {"field": "rev", "type": "nominal"}, "tooltip": [{"field": "step", "title": "step", "type": "quantitative"}, {"field": "mae", "title": "mae", "type": "quantitative"}]}, "transform": [{"loess": "mae", "on": "step", "groupby": ["rev", "filename", "field", "filename::field"], "bandwidth": {"signal": "smooth"}}]}, {"mark": {"type": "line", "opacity": 0.2}, "encoding": {"x": {"field": "step", "type": "quantitative", "title": "step"}, "y": {"field": "mae", "type": "quantitative", "title": "mae", "scale": {"zero": false}}, "color": {"field": "rev", "type": "nominal"}, "tooltip": [{"field": "step", "title": "step", "type": "quantitative"}, {"field": "mae", "title": "mae", "type": "quantitative"}]}}, {"mark": {"type": "circle", "size": 10, "tooltip": {"content": "encoding"}}, "encoding": {"x": {"aggregate": "max", "field": "step", "type": "quantitative", "title": "step"}, "y": {"aggregate": {"argmax": "step"}, "field": "mae", "type": "quantitative", "title": "mae", "scale": {"zero": false}}, "color": {"field": "rev", "type": "nominal"}}}]};
+            vegaEmbed('#static_mae', spec);
+        </script>
+    </div>
+    
+</body>
+</html>

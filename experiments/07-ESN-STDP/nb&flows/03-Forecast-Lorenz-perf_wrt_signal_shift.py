@@ -1,15 +1,10 @@
-""" MNIST classification with ESN + STDP: Performance vs SignalShift
+""" Lorenz Forecast ESN + STDP: Performance vs SignalShift
 
 Q: Is it possible to achieve an improvement in the classification
     performance of an ESN by applying STDP?
 
-Premises and observations
+
 -------------------------
-0. Classification on images is something almost out-of-scope for ESN
-1. Each image is shown as single example made up of P features, where
-    P is the total number of pixels.
-2. STDP cannot occur during reservoir recursion, since it would alter
-    the activations to which the readout is mapped.
 
 Exp Observations
 ----------------
@@ -37,6 +32,7 @@ import sys
 import time
 from typing import Dict, Iterable, List
 
+from dvclive import Live
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -67,255 +63,186 @@ assert EXP_DIR.exists(), \
 
 recompute = False
 
-# %% Data Loading
 
-example_len = 10000
+# %% Training
 
-ds_path = EXP_DATA_DIR/f"ds_lorenz-{example_len}.pkl"
-
-X_train, X_valid, X_test, y_train, y_valid, y_test = \
-    src07_f.expt_generate_new_lorenz_data(
-        example_len = 10000,
-        test_size = 0.2,
-        valid_size = 0.15,
-        recompute = False,
-        ds_path = ds_path,
-        shift = 5,  # forecasted delay
-        s=12, r=30, b=2.700 # s=10, r=28, b=8/3
-    )
-
-
-print(
-    X_train.shape, y_train.shape,
-    X_valid.shape, y_valid.shape,
-    X_test.shape, y_test.shape)
-
-# %% Model definition
-
-input_size = X_train.shape[1]
-reservoir_size = 100
-output_size = y_train.shape[1]
-esn = BaseESN(
-    input_size,
-    reservoir_size,
-    output_size,
-    connections = (stdp_f.generate_simple_circle_connections_mask(
-        (reservoir_size, reservoir_size)) > 0).int()
-)
-
-# Training
-
-states = esn.train(X_train.float(), y_train.float())
-
-# %% 1 Trial
-
-y_out = esn.predict(X_valid.float())
-y_pred = y_out
-print(y_pred.shape)
-
-# %% 1 Trial: Plot
-
-fig = src07_f.plot_evaluate_regression_report(y_valid, y_pred)
-fig
-
-# %% Many Trials: Performance distribution
-"""
-Here we measure the performance distribution of many trials, since
-the randomicity of the initialization may alter the performance.
-"""
-
-n_trials = 100
-
-perf_hist_nostdp: Dict[str, List] = {}  # collects the performance report history
-t0 = time.time()
-for i in range(n_trials):
-    # Define model
-    esn = BaseESN(
-        input_size,
-        reservoir_size,
-        output_size,
-        connections = (stdp_f.generate_simple_circle_connections_mask(
-            (reservoir_size, reservoir_size)) > 0).int()
-    )
-
-    states = esn.train(X_train.float(), y_train.float())
-    y_out = esn.predict(X_valid.float())
-    y_pred = y_out
-    report = src07_f.evaluate_regression_report(y_valid, y_pred)
-    for m_name, m_val in report.items():
-        if m_name not in perf_hist_nostdp:
-            perf_hist_nostdp[m_name] = []
-        perf_hist_nostdp[m_name].append(m_val)
-print(f"Executed in {time.time()-t0:.0f}s")
-
-# Plot
-fig, axs = plt.subplots(1, len(perf_hist_nostdp))
-
-sns.histplot(perf_hist_nostdp['mae'], ax=axs[0])
-axs[0].set(title='MAE', yscale='log')
-
-sns.histplot(perf_hist_nostdp['mse'], ax=axs[1])
-axs[1].set(title='MSE', yscale='log')
-
-sns.histplot(perf_hist_nostdp['r2'], ax=axs[2])
-axs[2].set(title='R2', yscale='log')
-
-perf_stats_before = pd.DataFrame(perf_hist_nostdp).describe()
-print(perf_stats_before)
+params = {
+    'data': {
+        'example_len': 10000,
+        'test_size': 0.2,
+        'valid_size': 0.15,
+        'shift': 10
+    },
+    'experiment': {
+        'n_trials': 50,
+        'n_STDP_steps': 5,
+    },
+    'model': {
+        'reservoir_size': 100,
+    }
+}
 
 
-# %% STDP-Execute
-""" Many trials implementing STDP ESN weights update
+reservoir_size = params['model']['reservoir_size']
 
-Trial steps
------------
-1. Initialize the ESN.
-2. Perform the STDP Update.
+# %%
+with Live(save_dvc_exp=True) as live:
 
-STDP Update
------------
-1. Train the ESN and get the network state history from training
-2. Compute the new Reservoir weights, new_W, applying STDP to the states of
-    the last 20 steps.
-3. Replace the Reservoir weights with the new ones just computed.
+    # STDP-Execute
+    """ Many trials implementing STDP ESN weights update
 
-"""
+    Trial steps
+    -----------
+    1. Initialize the ESN.
+    2. Perform the STDP Update.
 
+    STDP Update
+    -----------
+    1. Train the ESN and get the network state history from training
+    2. Compute the new Reservoir weights, new_W, applying STDP to the states of
+        the last 20 steps.
+    3. Replace the Reservoir weights with the new ones just computed.
 
-t0 = time.time()
-th = 0  # spike threshold
-perf_hist_nonstdp = {'mse': [], 'mae': [], 'r2': []}
+    """
+    live.log_param("trials", params['experiment']['n_trials'])
 
-perf_hist_after_stdp = {'mse': [], 'mae': [], 'r2': []}
-"""Mean performance history of STDP optimisation
-every element is the last performance along all the optimisation steps
-"""
+    t0 = time.time()
+    th = 0  # spike threshold
+    perf_hist_nonstdp = {'mse': [], 'mae': [], 'r2': []}
 
-perf_hist_stdp_inner: Dict[str, List] = {'mse': [], 'mae': [], 'r2': []}
-"""Performance history of STDP optimisasion step
-every element is the performance at the specific optimisation step
-"""
+    perf_hist_after_stdp = {'mse': [], 'mae': [], 'r2': []}
+    """Mean performance history of STDP optimisation
+    every element is the last performance along all the optimisation steps
+    """
 
-perf_hist_stdp = []
+    perf_hist_stdp_inner: Dict[str, List] = {'mse': [], 'mae': [], 'r2': []}
+    """Performance history of STDP optimisasion step
+    every element is the performance at the specific optimisation step
+    """
 
-ds_path = EXP_DATA_DIR/f"ds_lorenz-{example_len}.pkl"
+    perf_hist_stdp = []
 
-X_train, X_valid, X_test, y_train, y_valid, y_test = \
-    src07_f.expt_generate_new_lorenz_data(
-        example_len = 10000,
-        test_size = 0.2,
-        valid_size = 0.15,
-        recompute = False,
-        ds_path = ds_path,
-        shift = 15,  # forecasted delay
-        s=12, r=30, b=2.700
-    )
+    n_trials = params['experiment']['n_trials']
+    n_STDP_steps = params['experiment']['n_STDP_steps']
+    verbose = False
 
-W_hist_nonstdp = []
-W_hist_stdp =  []
-
-n_trials: int = 10
-n_STDP_steps: int = 5
-verbose = False
-for i in range(n_trials):
-    print(f"INFO: Trial #{i}")
-
-    esn = BaseESN(
-        input_size,
-        reservoir_size,
-        output_size,
-        connections = (stdp_f.generate_simple_circle_connections_mask(
-            (reservoir_size, reservoir_size)) > 0).int(),
-        decay = 0.5
-    )
-
-    # Non-STDP
-    state_hist = esn.train(X_train.float(), y_train.float())
-    y_out = esn.predict(X_valid.float())
-    y_pred = y_out
-    
-    report = src07_f.evaluate_regression_report(y_valid, y_pred)
-    for m_name, m_val in report.items():
-        if m_name not in perf_hist_nonstdp:
-            perf_hist_nonstdp[m_name] = []
-        perf_hist_nonstdp[m_name].append(m_val)
-    
-    W_hist_nonstdp.append(esn.W.data)
-    
-    # STDP Update
-    perf_hist_stdp_inner = {}
-    W_hist_stdp.append([])
-    for epoch in range(n_STDP_steps):
-        t_i = time.time()
-
-        # STDP
-        raster = (state_hist > th).to(int)[:, -20:]
-        # update hidden connections
-        reservoir_weights = esn.W.clone()
-        reservoir_connections = esn.connections
-
-        # print(layer.weight.mean())
-        new_W = stdp_f.stdp_step(
-            reservoir_weights,
-            connections=reservoir_connections,
-            raster=raster,
-            spike_collection_rule = stdp_f.all_to_all,
-            dw_rule = "sum",
-            max_delta_t=4,
+    # Data Loading
+    X_train, X_valid, X_test, y_train, y_valid, y_test = \
+        src07_f.expt_generate_new_lorenz_data(
+            example_len = params['data']['example_len'],
+            test_size = params['data']['test_size'],
+            valid_size = params['data']['valid_size'],
+            recompute = True,
+            ds_path = EXP_DATA_DIR/f"ds_lorenz.pkl",
+            shift = params['data']['shift'],  # forecasted delay
+            s=12, r=30, b=2.700
         )
-        # Normalize weights
-        # new_W /= new_W.max()
-        new_W = ((new_W / new_W.abs().max()) * 2 - 1)
-        if epoch % 2 == 0:
-            new_W = (0.5 * new_W + \
-                torch.randn_like(esn.W) * 0.5)
-        new_W *= esn.connections
 
-        # ensure weights matrix reflects the connections
-        n_exceding_connections = (
-            (new_W != 0).to(torch.int) - \
-                (reservoir_connections != 0).to(torch.int)
-            ).sum()
-        assert n_exceding_connections == 0, f"{n_exceding_connections}"
-        
-        # Update ESN weights
-        esn.W = new_W
-        assert esn.W.equal(new_W)
-        W_hist_stdp[-1].append(esn.W.data)
+    W_hist_nonstdp = []
+    W_hist_stdp =  []
 
-        if verbose: print(f"STDP executed in {time.time() - t_i:.0f}s")
+    for i in range(n_trials):
+    
+        print(f"INFO: Trial #{i}")
 
-        # # Retrain after STDP and evaluate
+        esn = BaseESN(
+            input_size = X_train.shape[1],
+            reservoir_size=reservoir_size,
+            output_size = y_train.shape[1],
+            connections = (stdp_f.generate_simple_circle_connections_mask(
+                (reservoir_size, reservoir_size)) > 0).int(),
+        )
+
+        # Non-STDP
         state_hist = esn.train(X_train.float(), y_train.float())
         y_out = esn.predict(X_valid.float())
         y_pred = y_out
         
         report = src07_f.evaluate_regression_report(y_valid, y_pred)
         for m_name, m_val in report.items():
-            if m_name not in perf_hist_stdp_inner:
-                perf_hist_stdp_inner[m_name] = []
-            perf_hist_stdp_inner[m_name].append(m_val)
+            if m_name not in perf_hist_nonstdp:
+                perf_hist_nonstdp[m_name] = []
+            perf_hist_nonstdp[m_name].append(m_val)
+            live.log_metric(m_name, m_val)
         
-    # perf_hist_stdp.append(
-    #     {k: np.mean(v) for k, v in perf_hist_stdp_inner.items()})
-    perf_hist_stdp_inner = {
-        k: torch.Tensor(v) for k, v in perf_hist_stdp_inner.items()}
-    perf_hist_stdp.append(perf_hist_stdp_inner)
+        W_hist_nonstdp.append(esn.W.data)
+        
+        # STDP Update
+        perf_hist_stdp_inner = {}
+        W_hist_stdp.append([])
+        for epoch in range(n_STDP_steps):
+            t_i = time.time()
 
-    for m_name, m_hist in perf_hist_stdp_inner.items():
-            if m_name not in perf_hist_stdp_inner:
-                perf_hist_after_stdp[m_name] = []
-            perf_hist_after_stdp[m_name].append(m_hist[-1].item())
+            # STDP
+            raster = (state_hist > th).to(int)[:, -20:]
+            # update hidden connections
+            reservoir_weights = esn.W.clone()
+            reservoir_connections = esn.connections
 
-    print(f"t: {time.time() - t0:.0f}s")
+            # print(layer.weight.mean())
+            new_W = stdp_f.stdp_step(
+                reservoir_weights,
+                connections=reservoir_connections,
+                raster=raster,
+                spike_collection_rule = stdp_f.all_to_all,
+                dw_rule = "sum",
+                max_delta_t=4,
+            )
+            # Normalize weights
+            # new_W /= new_W.max()
+            new_W = ((new_W / new_W.abs().max()) * 2 - 1)
+            if epoch % 2 == 0:
+                new_W = (0.5 * new_W + \
+                    torch.randn_like(esn.W) * 0.5)
+            new_W *= esn.connections
 
-print(f"STDP performance stats:")
-perf_stats_before = pd.DataFrame(perf_hist_nonstdp).describe()
-print(perf_stats_before)
+            # ensure weights matrix reflects the connections
+            n_exceding_connections = (
+                (new_W != 0).to(torch.int) - \
+                    (reservoir_connections != 0).to(torch.int)
+                ).sum()
+            assert n_exceding_connections == 0, f"{n_exceding_connections}"
+            
+            # Update ESN weights
+            esn.W = new_W
+            assert esn.W.equal(new_W)
+            W_hist_stdp[-1].append(esn.W.data)
+
+            if verbose: print(f"STDP executed in {time.time() - t_i:.0f}s")
+
+            # # Retrain after STDP and evaluate
+            state_hist = esn.train(X_train.float(), y_train.float())
+            y_out = esn.predict(X_valid.float())
+            y_pred = y_out
+            
+            report = src07_f.evaluate_regression_report(y_valid, y_pred)
+            for m_name, m_val in report.items():
+                if m_name not in perf_hist_stdp_inner:
+                    perf_hist_stdp_inner[m_name] = []
+                perf_hist_stdp_inner[m_name].append(m_val)
+            
+        # perf_hist_stdp.append(
+        #     {k: np.mean(v) for k, v in perf_hist_stdp_inner.items()})
+        perf_hist_stdp_inner = {
+            k: torch.Tensor(v) for k, v in perf_hist_stdp_inner.items()}
+        perf_hist_stdp.append(perf_hist_stdp_inner)
+
+        for m_name, m_hist in perf_hist_stdp_inner.items():
+                if m_name not in perf_hist_stdp_inner:
+                    perf_hist_after_stdp[m_name] = []
+                perf_hist_after_stdp[m_name].append(m_hist[-1].item())
+
+        print(f"t: {time.time() - t0:.0f}s")
+
+    print(f"STDP performance stats:")
+    perf_stats_before = pd.DataFrame(perf_hist_nonstdp).describe()
+    print(perf_stats_before)
 
 
-perf_stats_after = pd.DataFrame(perf_hist_after_stdp).describe()
-print(perf_stats_after)
+    perf_stats_after = pd.DataFrame(perf_hist_after_stdp).describe()
+    print(perf_stats_after)
+
+    live.next_step()
 
 # %% Plot Performance comparison before/after. boxplots
 
