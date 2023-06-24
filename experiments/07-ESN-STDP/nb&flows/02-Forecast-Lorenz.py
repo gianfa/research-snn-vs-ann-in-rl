@@ -44,7 +44,7 @@ import src07.funx as src07_f
 
 ROOT = Path('../../../')
 DATA_DIR = ROOT/'data'
-EXP_DIR = ROOT/'experiments/07-ESN-classification'
+EXP_DIR = ROOT/'experiments/07-ESN-STDP'
 EXP_DATA_DIR = EXP_DIR/'data'
 EXP_REPORT_DIR = EXP_DIR/'report'
 
@@ -219,7 +219,7 @@ print(perf_stats_after)
 
 # %% STDP-Results: Explore weight changes
 
-stdp_f.plot_most_changing_node_weights(torch.stack(W_hist), n_top_weights=5)
+stdp_f.plot_most_changing_node_weights_and_connection(torch.stack(W_hist), n_top_weights=5)
 
 # %% STDP-Results: Plot ESN connections
 

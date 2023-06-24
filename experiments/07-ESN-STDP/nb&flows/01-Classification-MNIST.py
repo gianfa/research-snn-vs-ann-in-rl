@@ -197,7 +197,8 @@ for epoch in range(10):
 
 # %%
 
-stdp_f.plot_most_changing_node_weights(torch.stack(W_hist), n_top_weights=5)
+stdp_f.plot_most_changing_node_weights_and_connection(
+    torch.stack(W_hist), n_top_weights=5)
 
 # %% Plot ESN connections
 
