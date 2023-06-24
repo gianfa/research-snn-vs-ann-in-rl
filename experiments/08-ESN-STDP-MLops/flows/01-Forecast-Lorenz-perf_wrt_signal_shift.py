@@ -54,15 +54,16 @@ from experimentkit_in.visualization import get_cmap_colors
 from experimentkit_in.funx import pickle_save_dict, pickle_load, load_yaml
 from experimentkit_in.metricsreport import MetricsReport
 from experimentkit_in.generators.time_series import gen_lorenz
+from experimentkit_in.logger_config import setup_logger
 from stdp.estimators import BaseESN
 from stdp import funx as stdp_f
 
-import src08.funx as src07_f
+import src08.funx as src08_f
 
 # Params #
 ROOT = Path('../../../')
 DATA_DIR = ROOT/'data'
-EXP_DIR = ROOT/'experiments/07-ESN-STDP'
+EXP_DIR = ROOT/'experiments/08-ESN-STDP-MLops'
 EXP_DATA_DIR = EXP_DIR/'data'
 EXP_REPORT_DIR = EXP_DIR/'report'
 
@@ -84,20 +85,27 @@ params
 
 recompute = False  # if true don't use cached results
 
+# %% set logger
+
+logger = setup_logger('ESN-STDP-Lorenz')
+
 # %% Data Loading
 
-example_len = 10000
+example_len = params['data']['example_len']
+test_size = params['data']['test_size']
+valid_size = params['data']['valid_size']
+shift = params['data']['shift']
 
 ds_path = EXP_DATA_DIR/f"ds_lorenz-{example_len}.pkl"
 
 X_train, X_valid, X_test, y_train, y_valid, y_test = \
-    src07_f.expt_generate_new_lorenz_data(
-        example_len = 10000,
-        test_size = 0.2,
-        valid_size = 0.15,
+    src08_f.expt_generate_new_lorenz_data(
+        example_len = example_len,
+        test_size = test_size,
+        valid_size = valid_size,
         recompute = False,
         ds_path = ds_path,
-        shift = 5,  # forecasted delay
+        shift = shift,  # forecasted delay
         s=12, r=30, b=2.700 # s=10, r=28, b=8/3
     )
 
@@ -106,82 +114,6 @@ print(
     X_train.shape, y_train.shape,
     X_valid.shape, y_valid.shape,
     X_test.shape, y_test.shape)
-
-# %% Model definition
-
-input_size = X_train.shape[1]
-reservoir_size = params['model']['reservoir_size']
-output_size = y_train.shape[1]
-esn = BaseESN(
-    input_size,
-    reservoir_size,
-    output_size,
-    connections = (stdp_f.generate_simple_circle_connections_mask(
-        (reservoir_size, reservoir_size)) > 0).int()
-)
-
-# Training
-
-states = esn.train(X_train.float(), y_train.float())
-
-# %% 1 Trial
-
-y_out = esn.predict(X_valid.float())
-y_pred = y_out
-print(y_pred.shape)
-
-# plot
-fig = src07_f.plot_evaluate_regression_report(y_valid, y_pred)
-fig
-
-# %% Many Trials: Performance distribution
-"""
-Here we measure the performance distribution of many trials, since
-the randomicity of the initialization may alter the performance.
-"""
-
-n_trials = params['experiment']['n_trials']
-
-perf_hist_nostdp: Dict[str, List] = {}  # collects the performance report history
-
-t0 = time.time()
-input_size = X_train.shape[1]
-reservoir_size = params['model']['reservoir_size']
-output_size = y_train.shape[1]
-for i in range(n_trials):
-    # Define model
-    esn = BaseESN(
-        input_size,
-        reservoir_size,
-        output_size,
-        connections = (stdp_f.generate_simple_circle_connections_mask(
-            (reservoir_size, reservoir_size)) > 0).int()
-    )
-
-    states = esn.train(X_train.float(), y_train.float())
-    y_out = esn.predict(X_valid.float())
-    y_pred = y_out
-    report = src07_f.evaluate_regression_report(y_valid, y_pred)
-    for m_name, m_val in report.items():
-        if m_name not in perf_hist_nostdp:
-            perf_hist_nostdp[m_name] = []
-        perf_hist_nostdp[m_name].append(m_val)
-print(f"Executed in {time.time()-t0:.0f}s")
-
-# Plot
-fig, axs = plt.subplots(1, len(perf_hist_nostdp))
-
-sns.histplot(perf_hist_nostdp['mae'], ax=axs[0])
-axs[0].set(title='MAE', yscale='log')
-
-sns.histplot(perf_hist_nostdp['mse'], ax=axs[1])
-axs[1].set(title='MSE', yscale='log')
-
-sns.histplot(perf_hist_nostdp['r2'], ax=axs[2])
-axs[2].set(title='R2', yscale='log')
-
-perf_stats_before = pd.DataFrame(perf_hist_nostdp).describe()
-print(perf_stats_before)
 
 
 # %% STDP-Execute
@@ -221,7 +153,7 @@ perf_hist_stdp = []
 ds_path = EXP_DATA_DIR/f"ds_lorenz-{example_len}.pkl"
 
 X_train, X_valid, X_test, y_train, y_valid, y_test = \
-    src07_f.expt_generate_new_lorenz_data(
+    src08_f.expt_generate_new_lorenz_data(
         example_len = 10000,
         test_size = 0.2,
         valid_size = 0.15,
@@ -259,7 +191,7 @@ for i in range(n_trials):
     y_out = esn.predict(X_valid.float())
     y_pred = y_out
     
-    report = src07_f.evaluate_regression_report(y_valid, y_pred)
+    report = src08_f.evaluate_regression_report(y_valid, y_pred)
     for m_name, m_val in report.items():
         if m_name not in perf_hist_nonstdp:
             perf_hist_nonstdp[m_name] = []
@@ -315,7 +247,7 @@ for i in range(n_trials):
         y_out = esn.predict(X_valid.float())
         y_pred = y_out
         
-        report = src07_f.evaluate_regression_report(y_valid, y_pred)
+        report = src08_f.evaluate_regression_report(y_valid, y_pred)
         for m_name, m_val in report.items():
             if m_name not in perf_hist_stdp_inner:
                 perf_hist_stdp_inner[m_name] = []
@@ -342,13 +274,14 @@ print(perf_stats_before)
 perf_stats_after = pd.DataFrame(perf_hist_after_stdp).describe()
 print(perf_stats_after)
 
+
 # %% Plot Performance comparison before/after. boxplots
 
 
 metrics_to_plot=['mse', 'mae', 'r2']
 fig, axs = plt.subplots(1, len(metrics_to_plot), figsize=(10, 8))
 for ax, mi in zip(axs.ravel(), metrics_to_plot):
-    src07_f.plot_compare_df_via_boxplot(
+    src08_f.plot_compare_df_via_boxplot(
         df1=perf_stats_before[[mi]],
         df2=perf_stats_after[[mi]],
         names = ['before', 'after'],
@@ -381,7 +314,7 @@ ev_hist = torch.stack(ev_hist)  # (trials, stdp_steps, 1)
 fig, axs = plt.subplots(len(ev_hist), figsize=(4, 35))
 
 for i, ax in enumerate(axs.ravel()):
-    src07_f.plot_eigenvalues_tensor(ev_hist[i], ax=ax)
+    src08_f.plot_eigenvalues_tensor(ev_hist[i], ax=ax)
     title = f"Eig. trial #{i}.\n"
     title += "\n".join([
         f"MSE: {perf_hist_after_stdp['mse'][i]:.2f}",
