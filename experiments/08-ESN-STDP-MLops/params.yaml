@@ -6,8 +6,6 @@ data:
   valid_size: 0.15
   shift: 5
 
-
-
 model:
   reservoir_size: 100
   decay: 0.5
@@ -17,7 +15,7 @@ model:
 # the randomicity of the initialization may alter the performance.
 experiment:
   # n_trials: (int).
-  n_trials: 100
+  n_trials: 5
   # n_STDP_steps: (int). How many times apply the STDP per each time step
   n_STDP_steps: 5
   # STDP_steps_scope: (int). Last steps to consider for STDP spike collection
