@@ -94,7 +94,7 @@ def expt_generate_new_lorenz_data(
     y_valid = torch.tensor(y_valid, dtype=torch.float).unsqueeze(1)
     y_test = torch.tensor(y_test, dtype=torch.float).unsqueeze(1)
 
-    print(
+    if v: print(
         X_train.shape, y_train.shape,
         X_valid.shape, y_valid.shape,
         X_test.shape, y_test.shape)
