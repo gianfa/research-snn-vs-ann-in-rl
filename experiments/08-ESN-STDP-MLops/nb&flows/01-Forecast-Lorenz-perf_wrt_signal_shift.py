@@ -28,14 +28,17 @@ TODOs
 in funzione della lunghezza del segnale
 * distribuzione dei pesi nei confronti delle performance
 
-
+How to launch it
+----------------
+$python 01-Forecast-Lorenz-perf_wrt_signal_shift.py --config
 """
 # %%
+import argparse
 from copy import deepcopy
 from pathlib import Path
 import sys
 import time
-from typing import Dict, Iterable, List
+from typing import Any, Dict, Iterable, List
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -48,7 +51,7 @@ import torch
 
 sys.path += ["..", "../..", "../../.."]
 from experimentkit_in.visualization import get_cmap_colors
-from experimentkit_in.funx import pickle_save_dict, pickle_load
+from experimentkit_in.funx import pickle_save_dict, pickle_load, load_yaml
 from experimentkit_in.metricsreport import MetricsReport
 from experimentkit_in.generators.time_series import gen_lorenz
 from stdp.estimators import BaseESN
@@ -56,16 +59,30 @@ from stdp import funx as stdp_f
 
 import src08.funx as src07_f
 
+# Params #
 ROOT = Path('../../../')
 DATA_DIR = ROOT/'data'
 EXP_DIR = ROOT/'experiments/07-ESN-STDP'
 EXP_DATA_DIR = EXP_DIR/'data'
 EXP_REPORT_DIR = EXP_DIR/'report'
 
+
 assert EXP_DIR.exists(), \
     f"CWD: {Path.cwd()}\nROOT: {ROOT.absolute()}"
 
-recompute = False
+
+if __name__ == '__main__':
+    arg_parser = argparse.ArgumentParser()
+    arg_parser.add_argument("--config", dest="config", required=False)
+    args = arg_parser.parse_args()
+    if args.config is not None:
+        params = load_yaml(fpath=args.config)
+    else:
+        params = load_yaml('../params.yaml')
+params
+
+
+recompute = False  # if true don't use cached results
 
 # %% Data Loading
 
@@ -93,7 +110,7 @@ print(
 # %% Model definition
 
 input_size = X_train.shape[1]
-reservoir_size = 100
+reservoir_size = params['model']['reservoir_size']
 output_size = y_train.shape[1]
 esn = BaseESN(
     input_size,
@@ -113,8 +130,7 @@ y_out = esn.predict(X_valid.float())
 y_pred = y_out
 print(y_pred.shape)
 
-# %% 1 Trial: Plot
-
+# plot
 fig = src07_f.plot_evaluate_regression_report(y_valid, y_pred)
 fig
 
@@ -124,10 +140,14 @@ Here we measure the performance distribution of many trials, since
 the randomicity of the initialization may alter the performance.
 """
 
-n_trials = 100
+n_trials = params['experiment']['n_trials']
 
 perf_hist_nostdp: Dict[str, List] = {}  # collects the performance report history
+
 t0 = time.time()
+input_size = X_train.shape[1]
+reservoir_size = params['model']['reservoir_size']
+output_size = y_train.shape[1]
 for i in range(n_trials):
     # Define model
     esn = BaseESN(
@@ -214,8 +234,13 @@ X_train, X_valid, X_test, y_train, y_valid, y_test = \
 W_hist_nonstdp = []
 W_hist_stdp =  []
 
-n_trials: int = 10
-n_STDP_steps: int = 5
+n_trials: int = params['experiment']['n_trials']
+n_STDP_steps: int = params['experiment']['n_STDP_steps']
+
+input_size = X_train.shape[1]
+reservoir_size = params['model']['reservoir_size']
+output_size = y_train.shape[1]
+STDP_steps_scope = params['experiment']['STDP_steps_scope']
 verbose = False
 for i in range(n_trials):
     print(f"INFO: Trial #{i}")
@@ -226,7 +251,7 @@ for i in range(n_trials):
         output_size,
         connections = (stdp_f.generate_simple_circle_connections_mask(
             (reservoir_size, reservoir_size)) > 0).int(),
-        decay = 0.5
+        decay = params['model']['decay']
     )
 
     # Non-STDP
@@ -249,7 +274,7 @@ for i in range(n_trials):
         t_i = time.time()
 
         # STDP
-        raster = (state_hist > th).to(int)[:, -20:]
+        raster = (state_hist > th).to(int)[:, -STDP_steps_scope:]
         # update hidden connections
         reservoir_weights = esn.W.clone()
         reservoir_connections = esn.connections
