@@ -1,0 +1,9 @@
+schema: '2.0'
+stages:
+  train:
+    cmd: python experiments/07-ESN-STDP/nb&flows/03-Forecast-Lorenz-perf_wrt_signal_shift.py
+    deps:
+    - path: experiments/07-ESN-STDP/nb&flows/03-Forecast-Lorenz-perf_wrt_signal_shift.py
+      hash: md5
+      md5: 9cbe0f6a5eafa3c431a1540255d91cb8
+      size: 14064
