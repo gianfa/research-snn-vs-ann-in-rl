@@ -4,6 +4,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import os
+from pathlib import Path
 import pickle
 import time
 
@@ -32,7 +33,7 @@ def compare_sample_from_data(
     return axs
 
 
-def pickle_save_dict(fpath: str, d: dict) -> str:
+def pickle_save_dict(fpath: str or Path, d: dict) -> str:
     with open(fpath, "wb") as handle:
         pickle.dump(d, handle, protocol=pickle.HIGHEST_PROTOCOL)
 

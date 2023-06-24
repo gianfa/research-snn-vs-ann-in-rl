@@ -179,6 +179,18 @@ def gen_lorenz(
     -------
     np.array
         x-y-z time series, shaped as (num_steps +1) x 3
+
+    Example
+    -------
+    xyzs = gen_lorenz(s=12, r=30, b=2.700)
+    # Plot
+    ax = plt.figure().add_subplot(projection='3d')
+    ax.plot(*xyzs.T, lw=0.5)
+    ax.set_xlabel("X Axis")
+    ax.set_ylabel("Y Axis")
+    ax.set_zlabel("Z Axis")
+    ax.set_title("Lorenz Attractor")
+    plt.show()
     """
     xyzs = np.empty((n_steps + 1, 3))  # Need one more for the initial values
     xyzs[0] = xyz_0  # Set initial values
