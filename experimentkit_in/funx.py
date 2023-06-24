@@ -7,8 +7,10 @@ import os
 from pathlib import Path
 import pickle
 import time
+from typing import Dict
 
 import torch
+import yaml
 
 def compare_sample_from_data(
     data: torch.Tensor,
@@ -31,6 +33,17 @@ def compare_sample_from_data(
         verticalalignment='center', fontsize=25)
         axs[i, 2].axis('off')
     return axs
+
+
+def load_yaml(fpath: str = '../params.yaml') -> Dict[str, object]:
+    params = None
+    with open(fpath, "r") as stream:
+        try:
+            params = yaml.safe_load(stream)
+            print(params)
+        except yaml.YAMLError as e:
+            print(e)
+    return params
 
 
 def pickle_save_dict(fpath: str or Path, d: dict) -> str:
