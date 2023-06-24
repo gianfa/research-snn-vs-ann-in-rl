@@ -24,8 +24,12 @@ Results
 TODOs
 -----
 * plot at least 1 Res weight comparison between no-STDP and STDP.
-
-
+* implement L.Sq Optimisation
+* Lorenz oscillator
+    * forecast t+1, t+1, t+3, ..
+    * https://scipython.com/blog/the-lorenz-attractor/
+    * x or z or w as a target
+    * https://matplotlib.org/stable/gallery/mplot3d/lorenz_attractor.html
 """
 # %% Imports
 import itertools
@@ -35,6 +39,8 @@ import sys
 from typing import List
 
 import matplotlib.pyplot as plt
+import networkx as nx
+import numpy as np
 from sklearn.datasets import make_classification, make_regression
 from sklearn.model_selection import train_test_split
 import time
@@ -137,11 +143,15 @@ model = ESN(
 layer_names = [name for name, _ in model.named_modules() if len(name) > 0]
 
 # %% Trial1: Whole training
-
+"""
+* STDP update in ESN weight must happen after each epoch, since it should not
+    interfere with recurrent execution, because it will alter the projection
+    to the readout.
+"""
 
 # param: STDP
 th = 0  # spike threshold
-activate_STDP = False
+activate_STDP = True
 
 # param: optimisation
 criterion = nn.MSELoss()
@@ -160,53 +170,98 @@ activations, hooks = register_activations_hooks_to_layers(
 
 train_mr = MetricsReport()
 valid_mr = MetricsReport()
+W_hist = [model.W.weight.data]
 loss_hist = []
 test_loss_hist = []
 traces = []
 t_start = time.time()
-for epoch in range(9):
-    for i, X_i_Y_i in enumerate(zip(X_train, y_train)):
-        X_i, Y_i = X_i_Y_i
-        X_i, Y_i = X_i.to(torch.float32), Y_i.to(torch.float32)
-        if X_i.ndim == 1: X_i = X_i.unsqueeze(0)  # expand as a row
-        if Y_i.ndim == 1: Y_i = Y_i.unsqueeze(0)  # expand as a row
-        # output [=] (output.shape, out_features) = (bs, out_features)
-        out = model(X_i, activation=torch.tanh)
-        loss = criterion(out, Y_i)
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
+connections = stdp_f.generate_sparse_matrix(
+    model.W.weight.shape, 0.4, torch.ones).to_dense()
 
-        if activate_STDP:
-            if epoch > 0 and epoch % 4 == 0: # check ste_to_reset in register
-                traces = src_funx.activations_to_traces(activations, th)
-                raster = traces.T # torch.stack(traces).squeeze().T
-                spks = stdp_f.raster_collect_spikes(
-                    raster, collection_rule=all_to_all)
-                # update hidden connections
-                layer_name = 'W'
-                layer = src_funx.get_named_layer(model, layer_name)
-                # print(layer.weight.mean())
-                new_layer_W = stdp_f.stdp_step(
-                    getattr(model, layer_name).weight,
-                    connections=None,
-                    raster=raster,
-                    spike_collection_rule = all_to_all,
-                    dw_rule = "sum",
-                    max_delta_t=4,
-                )
-                # update weights normalizing them
-                new_layer_W = nn.Parameter(new_layer_W)#/new_layer_W.max())
-                layer.weight = new_layer_W
-                assert getattr(model, layer_name).weight.equal(new_layer_W)
-                print("STDP executed")
+for epoch in range(3):
+    X_train, y_train = X_train.to(torch.float32), y_train.to(torch.float32)
+    if X_train.ndim == 1: X_train = X_train.unsqueeze(0)  # expand as a row
+    if y_train.ndim == 1: y_train = y_train.unsqueeze(0)  # expand as a row
+    # output [=] (output.shape, out_features) = (bs, out_features)
+    out = model(X_train, activation=torch.tanh)
+    loss = criterion(out, y_train)
+    optimizer.zero_grad()
+    loss.backward()
+    optimizer.step()
+
+    
         
         
-        # print(traces)
+    # print(traces)
 
-        # Training metrics
-        loss_hist.append(loss.detach())
-        print(f"Epoch: {epoch+1}, i: {i}, Loss: {loss.item()}")
+    # Training metrics
+    loss_hist.append(loss.detach())
+    print(f"Epoch: {epoch+1}, Loss: {loss.item()}")
+
+    if activate_STDP:
+        if epoch > 0 and epoch % 1 == 0: # check step_to_reset in register
+            traces = src_funx.activations_to_traces(activations, th)
+            raster = traces.T # torch.stack(traces).squeeze().T
+            spks = stdp_f.raster_collect_spikes(
+                raster, collection_rule=all_to_all)
+            # update hidden connections
+            layer_name = 'W'
+            layer = src_funx.get_named_layer(model, layer_name)
+            # print(layer.weight.mean())
+            new_layer_W = stdp_f.stdp_step(
+                getattr(model, layer_name).weight,
+                connections=connections,
+                raster=raster,
+                spike_collection_rule = all_to_all,
+                dw_rule = "sum",
+                max_delta_t=4,
+            )
+            # TODO: Issue: connections must be ternary and sparse
+
+            # update weights normalizing them
+            new_layer_W = nn.Parameter(new_layer_W)#/new_layer_W.max())
+            layer.weight = new_layer_W
+            assert getattr(model, layer_name).weight.equal(new_layer_W)
+            print("STDP executed")
+    W_hist.append(model.W.weight.data)
+
+W_hist = torch.stack(W_hist)
+
+# %% Plot most changing weights
+
+stdp_f.plot_most_changing_node_weights_and_connection(W_hist, n_top_weights=5)
+
+# %%
+
+n_top_weights = 5
+# W_hist = torch.stack(W_hist)
+abs_diff = np.abs( np.diff(W_hist.detach().numpy(), axis=0) ).sum(axis=0)
+if abs_diff.sum() == 0:
+    print("INFO: No difference between W along hist")
+else:
+    flat_indices = np.argsort(abs_diff, axis=None)[-n_top_weights:]
+    row_indices, col_indices = np.unravel_index(flat_indices, abs_diff.shape)
+
+fig, ax = plt.subplots()
+for ri, ci in zip(row_indices, col_indices):
+    ax.plot(W_hist[:, ri, ci], "-o", label=f"{ri} -> {ci}")
+ax.grid()
+ax.legend()
+ax.set(
+    title=f'Top {n_top_weights} changing weights',
+    xlabel=f"# epoch"
+)
+
+# Plot Topology
+nodes = set(col_indices.tolist() + row_indices.tolist()); print(nodes)
+edges = [(row, col) for row, col in zip(row_indices, col_indices)]
+G = nx.DiGraph()
+G.add_nodes_from(nodes)
+G.add_edges_from(edges)
+pos = nx.spring_layout(G)  # Posizionamento dei nodi nel layout
+fig, ax = plt.subplots()
+nx.draw_networkx(G, pos, with_labels=True, arrows=True, ax=ax)
+ax.set(title='Topology of the most changing weights')
 
 # %%
 fig, ax = plt.subplots()
