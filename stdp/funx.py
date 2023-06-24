@@ -265,7 +265,7 @@ def stdp_step(
     W *=  (connections != 0).int()
 
     T_lu = stdp_generate_dw_lookup(max_delta_t, time_related=time_related)
-    print(f"nonzero: {(W != 0).int().sum()}")
+    if v: print(f"nonzero: {(W != 0).int().sum()}")
     # ## Compute all the dw ##
     hist = {
         'tpre_tpost': {},
@@ -572,6 +572,33 @@ def get_raster_from_tpre_tpost(
 def plot_most_changing_node_weights(
     W_hist: torch.Tensor,
     n_top_weights: int = 5,
+    ax: plt.Axes = None
+):
+    if not ax:
+        _, ax = plt.subplots()
+    abs_diff = np.abs( np.diff(W_hist, axis=0) ).sum(axis=0)
+    if abs_diff.sum() == 0:
+        print("INFO: No difference between W along hist")
+    else:
+        flat_indices = np.argsort(abs_diff, axis=None)[-n_top_weights:]
+        row_indices, col_indices = np.unravel_index(
+            flat_indices, abs_diff.shape)
+
+    for ri, ci in zip(row_indices, col_indices):
+        ax.plot(W_hist[:, ri, ci], "-o", label=f"{ri} -> {ci}")
+    ax.grid()
+    ax.legend()
+    ax.set(
+        title=f'Top {n_top_weights} changing weights',
+        xlabel=f"# epoch",
+        xticks = np.arange(0, len(W_hist) + 1)
+    )
+    return ax
+
+
+def plot_most_changing_node_weights_and_connection(
+    W_hist: torch.Tensor,
+    n_top_weights: int = 5,
     axs: List[plt.Axes] = None
 ):
     if type(W_hist) == torch.Tensor:
@@ -595,7 +622,8 @@ def plot_most_changing_node_weights(
     axs[0].legend()
     axs[0].set(
         title=f'Top {n_top_weights} changing weights',
-        xlabel=f"# epoch"
+        xlabel=f"# epoch",
+        xticks = np.arange(0, len(W_hist) + 1)
     )
 
     # Plot Topology
