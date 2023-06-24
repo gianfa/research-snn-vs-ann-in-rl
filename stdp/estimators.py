@@ -181,13 +181,16 @@ class BaseESN(nn.Module):
             output_size: int,
             spectral_radius: float = 0.9,
             connections: torch.Tensor = None,
-            connectivity: float = 0.3):
+            connectivity: float = 0.3,
+            decay: float = 1,
+        ):
         self.input_size = input_size
         self.reservoir_size = reservoir_size
         self.output_size = output_size
         self.spectral_radius = spectral_radius
         self.connections = connections
         self.connectivity = connectivity
+        self.decay =  decay
 
         # Weights initialization
         self.W_in = (torch.rand(reservoir_size, input_size) - 0.5).float()
@@ -219,7 +222,7 @@ class BaseESN(nn.Module):
 
         # Reservoir Feedforward
         for t in range(1, inputs.shape[0]):
-            X[:, t] = torch.tanh(
+            X[:, t] = self.decay * torch.tanh(
                 torch.matmul(self.W_in, inputs[t]) +
                 torch.matmul(self.W, X[:, t-1].T))
 
