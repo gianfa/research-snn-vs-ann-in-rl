@@ -117,17 +117,17 @@ Performance shows a slight improvement after the application of STDP, appreciabl
 
 Performance shows a more marked improvement after the application of STDP, appreciable as shift and example_len increase. Evidently, applying the STDP, an initial configuration of Reservoir weights more appropriate for the task is obtained.
 
-<img src='data/exp-|example_len-shift-n_STDP_steps-STDP_scope|/results/comparison-r2_vs_n_STDP_steps.png' ><br>
-<img src='data/exp-|example_len-shift-n_STDP_steps-STDP_scope|/results/comparison-mse_vs_n_STDP_steps.png' ><br>
+<img src='./data/exp-example_len-shift-n_STDP_steps-STDP_scope/results/comparison-r2_vs_n_STDP_steps.png' ><br>
+<img src='./data/exp-example_len-shift-n_STDP_steps-STDP_scope/results/comparison-mse_vs_n_STDP_steps.png' ><br>
 
-<img src='data/exp-|example_len-shift-n_STDP_steps-STDP_scope|/results/comparison-r2_vs_STDP_scope.png' ><br>
-<img src='data/exp-|example_len-shift-n_STDP_steps-STDP_scope|/results/comparison-mse_vs_STDP_scope.png' ><br>  
+<img src='./data/exp-example_len-shift-n_STDP_steps-STDP_scope/results/comparison-r2_vs_STDP_scope.png' ><br>
+<img src='./data/exp-example_len-shift-n_STDP_steps-STDP_scope/results/comparison-mse_vs_STDP_scope.png' ><br>  
 
-<img src='data/exp-|example_len-shift-n_STDP_steps-STDP_scope|/results/comparison-r2_vs_shift.png' ><br>  
-<img src='data/exp-|example_len-shift-n_STDP_steps-STDP_scope|/results/comparison-mse_vs_shift.png' ><br>
+<img src='./data/exp-example_len-shift-n_STDP_steps-STDP_scope/results/comparison-r2_vs_shift.png' ><br>  
+<img src='./data/exp-example_len-shift-n_STDP_steps-STDP_scope/results/comparison-mse_vs_shift.png' ><br>
 
-<img src='data/exp-|example_len-shift-n_STDP_steps-STDP_scope|/results/comparison-r2_vs_example_len.png' ><br>
-<img src='data/exp-|example_len-shift-n_STDP_steps-STDP_scope|/results/comparison-mse_vs_example_len.png' ><br> 
+<img src='./data/exp-example_len-shift-n_STDP_steps-STDP_scope/results/comparison-r2_vs_example_len.png' ><br>
+<img src='./data/exp-example_len-shift-n_STDP_steps-STDP_scope/results/comparison-mse_vs_example_len.png' ><br> 
 
 
 
