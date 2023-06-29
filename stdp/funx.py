@@ -862,3 +862,11 @@ def activations_to_traces(activations: dict, th: float) -> torch.Tensor:
 
 def clear_activations(activations: dict) -> dict:
     return {name: [] for name, acts in activations.items()}
+
+
+# docs
+
+# TODO: toremove
+def unuseful1():
+    for pi in list((EXP_RESULTS_DIR/"results").iterdir()):
+        print(f"<img src='data/results/{pi.name}' ><br>")

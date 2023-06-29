@@ -1,3 +1,4 @@
+import argparse
 from functools import partial
 from pathlib import Path
 from typing import List
@@ -13,10 +14,21 @@ from torch.utils.data import DataLoader, TensorDataset
 import plotly.graph_objects as go
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 from sklearn.model_selection import train_test_split
+import yaml
 
 from experimentkit_in.funx import pickle_save_dict, pickle_load
 from experimentkit_in.generators.time_series import gen_lorenz
 from experimentkit_in.visualization import get_cmap_colors
+
+def load_yaml(): ...
+
+def argparse_config():
+    arg_parser = argparse.ArgumentParser()
+    arg_parser.add_argument("--config", dest="config", required=False)
+    args = arg_parser.parse_args()
+
+    params = load_yaml(fpath=args.config)
+    return params
 
 # Analysis #
 

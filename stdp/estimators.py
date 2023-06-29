@@ -174,6 +174,31 @@ class ESN(nn.Module):
         
 
 class BaseESN(nn.Module):
+    """Base Echo State Netowrk
+
+    Parameters
+    ----------
+    input_size : int
+        _description_
+    reservoir_size : int
+        _description_
+    output_size : int
+        _description_
+    spectral_radius : float, optional
+        _description_, by default 0.9
+    connections : torch.Tensor, optional
+        _description_, by default None
+    connectivity : float, optional
+        _description_, by default 0.3
+    decay : float, optional
+        _description_, by default 1
+    
+        
+    References
+    ----------
+    1. LUKOŠEVIČIUS, Mantas. A practical guide to applying echo state networks.
+     Neural Networks: Tricks of the Trade: Second Edition, 2012, 659-686.
+    """
     def __init__(
             self,
             input_size: int,
@@ -216,7 +241,27 @@ class BaseESN(nn.Module):
             torch.abs(torch.linalg.eig(self.W).eigenvalues))
         self.W /= max_eigenvalue / spectral_radius
 
-    def train(self, inputs, targets, washout=100):
+    def train(
+            self,
+            inputs: torch.Tensor,
+            targets: torch.Tensor,
+            washout: int =100):
+        """Train the ESN
+
+        Parameters
+        ----------
+        inputs : torch.Tensor
+            The input signal, namely the examples data, in supervised ML.
+        targets : torch.Tensor
+            The output signal, or target, namely the label data, in supervised ML.
+        washout : int, optional
+            The time steps to discard before to consider signal for the training. Useful for the network to synchronize. by default 100.
+
+        Returns
+        -------
+        X
+            The Reservoir states during training
+        """
         # X: reservoir states
         X = torch.zeros((self.reservoir_size, inputs.shape[0])).float()
 
@@ -227,14 +272,14 @@ class BaseESN(nn.Module):
                 torch.matmul(self.W, X[:, t-1].T))
 
         # Apply the initial Washout
-        X = X[:, washout:]
+        X = X[:, washout:] # [=] (t, N_input)
 
         # Train the Readout
         self.W_out = torch.matmul(
             torch.pinverse(X).T, targets[washout:].float())
         return X
 
-    def predict(self, inputs):
+    def predict(self, inputs: torch.Tensor):
         X = torch.zeros((self.reservoir_size, inputs.shape[0])).float()
 
         # Reservoir Feedforward
