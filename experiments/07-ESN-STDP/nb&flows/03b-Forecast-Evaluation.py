@@ -59,7 +59,9 @@ DATA_DIR = ROOT/'data'
 EXP_DIR = ROOT/'experiments/07-ESN-STDP'
 EXP_DATA_DIR = EXP_DIR/'data'
 EXP_REPORT_DIR = EXP_DIR/'report'
-EXP_RESULTS_DIR = EXP_DATA_DIR/'exp-|example_len-shift-n_STDP_steps-STDP_scope|'
+
+SUBEXP_DIR = EXP_DATA_DIR/'exp-example_len-shift-n_STDP_steps-STDP_scope'
+SUBEXP_RESULTS_DIR = SUBEXP_DIR/'produced_data'
 
 assert EXP_DIR.exists(), \
 f"CWD: {Path.cwd()}\nROOT: {ROOT.absolute()}"
@@ -93,7 +95,7 @@ grid_params_names = ['shift', 'example_len', 'n_STDP_steps', 'STDP_scope']
 # %% Plot Performance comparison before/after. boxplots
 
 perf = pd.DataFrame()
-for i, exp_dir in enumerate((EXP_RESULTS_DIR).iterdir()):
+for i, exp_dir in enumerate((SUBEXP_RESULTS_DIR).iterdir()):
 
     exp_params = pickle_load(exp_dir/"params.pkl")
 
@@ -134,14 +136,14 @@ for m_name in ['r2', 'mse']:
         showfliers=False, ax=ax) #, showmeans=True)
 
         fig.savefig(
-            EXP_RESULTS_DIR/f"results/comparison-{m_name}_vs_{param_name}.png")
+            SUBEXP_DIR/f"results/comparison-{m_name}_vs_{param_name}.png")
 
 
 
 # %% Plot Performance comparison before/after. dot-whiskers
 
 diffs = pd.DataFrame()
-for i, exp_dir in enumerate((EXP_RESULTS_DIR).iterdir()):
+for i, exp_dir in enumerate((SUBEXP_RESULTS_DIR).iterdir()):
 
     exp_params = pickle_load(exp_dir/"params.pkl")
 
@@ -189,7 +191,7 @@ for i, exp_dir in enumerate((EXP_RESULTS_DIR).iterdir()):
 # %% Plot Performance comparison before/after: means. scatter
 
 diffs = []
-for i, exp_dir in enumerate((EXP_RESULTS_DIR).iterdir()):
+for i, exp_dir in enumerate((SUBEXP_RESULTS_DIR).iterdir()):
     diff = {}
     try:
         exp_params = pickle_load(exp_dir/"params.pkl")
