@@ -19,7 +19,7 @@ from stdp.funx import (stdp_generate_dw_lookup, stdp_step,
     model_get_named_layer_params, model_layers_to_weights,
     )  # noqa
 from stdp.spike_collectors import nearest_pre_post_pair
-from stdp.estimators import ESN
+from stdp.estimators import ESN, BaseESN
 
 @pytest.fixture
 def simple_pre_post_W_A():
@@ -43,6 +43,32 @@ def simple_pre_post_W_A():
 def dw_time_lookup_40():
     return stdp_generate_dw_lookup(40)
 
+def test_BaseESN_simple__many_sizes():
+    for _ in range(10):
+        t_steps = torch.randint(12, 100, (1, 1)).item()
+        X = torch.rand(2, t_steps)  # [=] (Nu, t)
+        y = (X.sum(dim=0) > 1).int()[None, :]  # [=] (Ny, t)
+
+        input_size = X.shape[0]
+        reservoir_size = torch.randint(1, 100, (1, 1)).item()
+        output_size = y.shape[0]
+        spectral_radius = 0.9
+        washout = 5
+
+        esn = BaseESN(
+            input_size=input_size,
+            reservoir_size=reservoir_size,
+            output_size=output_size,
+            spectral_radius=spectral_radius,
+            washout=washout
+        )
+
+        out = esn.train(X, y)
+        assert out.shape == torch.Size([reservoir_size, t_steps - washout])
+
+        predictions = esn.predict(X)
+        assert predictions.shape == torch.Size(
+            [output_size, t_steps - washout])
 
 def test_define_spiking_cluster():
     clust = define_spiking_cluster(
