@@ -267,9 +267,13 @@ class BaseESN(nn.Module):
 
         # Reservoir Feedforward
         for t in range(1, inputs.shape[0]):
-            X[:, t] = self.decay * torch.tanh(
+
+            X_temporaneo[:, t] = self.decay * torch.tanh(
                 torch.matmul(self.W_in, inputs[t]) +
                 torch.matmul(self.W, X[:, t-1].T))
+
+            X_[:, t] = ( 1. - self.decay) *X_temporaneo[:, t]
+            
 
         # Apply the initial Washout
         X = X[:, washout:] # [=] (t, N_input)
