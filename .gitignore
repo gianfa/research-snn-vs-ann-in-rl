@@ -12,7 +12,7 @@ data
 !docs/imgs
 !**/experiments/LIF/data
 !**/experiments/LIF/imgs/
-
+!**/experiments/07-ESN-STDP/data/exp-example_len-shift-n_STDP_steps-STDP_scope/results
 poetry.lock
 
 **/data/*
@@ -179,3 +179,4 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
