@@ -216,6 +216,9 @@ FC(N4, N5)
 
 
 ## TODO
+* [] sample 0:1:0.1 il decay 
+* [] Lorenz with noise
+* [] change the architecture
 * [] feat(experimentkit): training monitor
   - monitor
   - use tqdm to print epochs, accuracy, and other useful stuff

@@ -179,15 +179,15 @@ class BaseESN(nn.Module):
     Parameters
     ----------
     input_size : int
-        _description_
+        Nu, size of each time step vector slice of the input signal.
     reservoir_size : int
-        _description_
+        Nx, size of the Reservoir.
     output_size : int
-        _description_
+        Ny, size of each time step vector slice of the input signal.
     spectral_radius : float, optional
         _description_, by default 0.9
     connections : torch.Tensor, optional
-        _description_, by default None
+        (Ny, Ny). Recurrent connections intra-Reservoir. by default None
     connectivity : float, optional
         _description_, by default 0.3
     decay : float, optional
@@ -208,6 +208,7 @@ class BaseESN(nn.Module):
             connections: torch.Tensor = None,
             connectivity: float = 0.3,
             decay: float = 1,
+            washout: int = 10,
         ):
         self.input_size = input_size
         self.reservoir_size = reservoir_size
@@ -216,6 +217,7 @@ class BaseESN(nn.Module):
         self.connections = connections
         self.connectivity = connectivity
         self.decay =  decay
+        self.washout = washout
 
         # Weights initialization
         self.W_in = (torch.rand(reservoir_size, input_size) - 0.5).float()
@@ -244,8 +246,8 @@ class BaseESN(nn.Module):
     def train(
             self,
             inputs: torch.Tensor,
-            targets: torch.Tensor,
-            washout: int =100):
+            targets: torch.Tensor
+        ) -> torch.Tensor:
         """Train the ESN
 
         Parameters
@@ -262,36 +264,51 @@ class BaseESN(nn.Module):
         X
             The Reservoir states during training
         """
-        # X: reservoir states
-        X = torch.zeros((self.reservoir_size, inputs.shape[0])).float()
+
+        # X: reservoir states collector [=] (Nx, t)
+        #                               [=] (reservoir_size, t)
+        X = torch.zeros((self.reservoir_size, inputs.shape[1])).float()
 
         # Reservoir Feedforward
-        for t in range(1, inputs.shape[0]):
-            X[:, t] = self.decay * torch.tanh(
-                torch.matmul(self.W_in, inputs[t]) +
+        for t in range(1, inputs.shape[1]):
+
+            # [Lukoˇseviˇcius, 2012, eqs. 2,3]
+            X_temp = torch.tanh(
+                torch.matmul(self.W_in, inputs[:, t]) +
                 torch.matmul(self.W, X[:, t-1].T))
+            
+            X[:, t] = (1. - self.decay) * X[:, t -1] + self.decay * X_temp
 
-        # Apply the initial Washout
-        X = X[:, washout:] # [=] (t, N_input)
+        # [Lukoˇseviˇcius, 2012, eq. 4]
+        # Apply the washout
+        X = X[:, self.washout:]
 
-        # Train the Readout
+        # Train W_out [=] (Ny, Nu + Nx)
+        concat_mat = torch.vstack((inputs[:, self.washout:], X))
         self.W_out = torch.matmul(
-            torch.pinverse(X).T, targets[washout:].float())
+            targets[:, self.washout:].float(), torch.pinverse(concat_mat))
         return X
 
     def predict(self, inputs: torch.Tensor):
-        X = torch.zeros((self.reservoir_size, inputs.shape[0])).float()
+        X = torch.zeros((self.reservoir_size, inputs.shape[1])).float()
 
-        # Reservoir Feedforward
-        for t in range(1, inputs.shape[0]):
-            X[:, t] = torch.tanh(
-                torch.matmul(self.W_in, inputs[t]) +
+         # Reservoir Feedforward
+        for t in range(1, inputs.shape[1]):
+            # [Lukoˇseviˇcius, 2012, eqs. 2,3]
+            X_temp = torch.tanh(
+                torch.matmul(self.W_in, inputs[:, t]) +
                 torch.matmul(self.W, X[:, t-1].T))
+            
+            X[:, t] = (1. - self.decay) * X[:, t -1] + self.decay * X_temp
 
-        # Output prediction
-        predictions = torch.matmul(X.T, self.W_out)
+        # Apply the washout
+        X = X[:, self.washout:]
+    
+        # Output prediction  [=] (Ny)
+        concat_mat = torch.vstack((inputs[:, self.washout:], X))
+        predictions = torch.matmul(self.W_out, concat_mat)
         return predictions
-
+        # print(inputs.shape, X.shape, self.reservoir_size)
 
 
 
