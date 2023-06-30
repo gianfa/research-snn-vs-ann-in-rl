@@ -26,6 +26,7 @@ tqdm = "^4.64.1"
 experimentkit = {path = "../experimentkit", develop = true}
 plotly = "^5.14.1"
 dvc = "^3.2.1"
+dvclive = "^2.12.0"
 
 [tool.poetry.dev-dependencies]
 autopep8 = "^2.0.0"

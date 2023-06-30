@@ -62,15 +62,20 @@ def stdp_dW(
 
 
 def stdp_generate_dw_lookup(
-        dt_max: int, time_related=True):
+        dt_max: int, time_related=True,
+        A_plus: float = 0.2,
+        A_minus: float = 0.2,
+        tau_plus: float = 5e-3,
+        tau_minus: float = 4.8e-3
+        ):
     """
     """
     if time_related:
         T_lu = torch.arange(-dt_max, dt_max+1)
-        A_plus = 0.2
-        tau_plus = 5e-3
-        A_minus = 0.2
-        tau_minus = 4.8e-3
+        A_plus = A_plus
+        tau_plus = tau_plus
+        A_minus = A_minus
+        tau_minus = tau_minus
         dw = stdp_dW(A_plus, A_minus, tau_plus, tau_minus, T_lu * 1e-5)
         T_lu = {int(dt): float(dwi) for dt, dwi in zip(T_lu.numpy().tolist(), dw)}
         T_lu[T_lu == 0] = 0
@@ -193,6 +198,12 @@ def stdp_step(
     max_delta_t: int = 20,
     inplace: bool = False,
     time_related: bool = True,
+    STDP_kwargs: dict = {
+        'A_plus': 0.2,
+        'A_minus': 0.2,
+        'tau_plus': 5e-3,
+        'tau_minus': 4.8e-3
+    },
     v: bool = False,
 ) -> torch.Tensor:
     """Simplified STDP step
@@ -264,7 +275,14 @@ def stdp_step(
     # apply connections mask
     W *=  (connections != 0).int()
 
-    T_lu = stdp_generate_dw_lookup(max_delta_t, time_related=time_related)
+    T_lu = stdp_generate_dw_lookup(
+        max_delta_t,
+        time_related=time_related,
+        A_plus=STDP_kwargs['A_plus'],
+        A_minus=STDP_kwargs['A_minus'],
+        tau_plus=STDP_kwargs['tau_plus'],
+        tau_minus=STDP_kwargs['tau_minus'],
+    )
     if v: print(f"nonzero: {(W != 0).int().sum()}")
     # ## Compute all the dw ##
     hist = {
@@ -862,3 +880,11 @@ def activations_to_traces(activations: dict, th: float) -> torch.Tensor:
 
 def clear_activations(activations: dict) -> dict:
     return {name: [] for name, acts in activations.items()}
+
+
+# docs
+
+# TODO: toremove
+def unuseful1():
+    for pi in list((EXP_RESULTS_DIR/"results").iterdir()):
+        print(f"<img src='data/results/{pi.name}' ><br>")

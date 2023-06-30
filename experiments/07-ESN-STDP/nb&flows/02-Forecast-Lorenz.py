@@ -1,14 +1,9 @@
-""" MNIST classification with ESN + STDP
+""" Lorenz Forecast classification with ESN + STDP
 
-Q: Is it possible to achieve an improvement in the classification
-    performance of an ESN by applying STDP?
+
 
 Premises and observations:
-    0. Classification on images is something almost out-of-scope for ESN
-    1. Each image is shown as single example made up of P features, where
-        P is the total number of pixels.
-    2. STDP cannot occur during reservoir recursion, since it would alter
-        the activations to which the readout is mapped.
+
 
 Exp Observations:
     1. It is prone to exploding weights since STDP will amplify indefinitely.
