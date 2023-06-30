@@ -208,7 +208,7 @@ class BaseESN(nn.Module):
             connections: torch.Tensor = None,
             connectivity: float = 0.3,
             decay: float = 1,
-            washout: int = 10,
+            washout: int = 0,
         ):
         self.input_size = input_size
         self.reservoir_size = reservoir_size
