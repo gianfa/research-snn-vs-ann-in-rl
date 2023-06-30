@@ -56,7 +56,7 @@ else:
     ds = pickle_load(ds_path)
 
 
-shift = 12
+shift = 30
 X = ds[:-shift]
 y = ds[shift:, 0]
 
@@ -89,9 +89,9 @@ print(
 
 # %% Model definition
 
-input_size = X_train.shape[1]
+input_size = X_train.T.shape[0]
 reservoir_size = 100
-output_size = y_train.shape[1]
+output_size = y_train.T.shape[0]
 esn = BaseESN(
     input_size,
     reservoir_size,
@@ -102,17 +102,17 @@ esn = BaseESN(
 
 # Training
 
-states = esn.train(X_train.float(), y_train.float())
+states = esn.train(X_train.T.float(), y_train.T.float())
 
 # %% 1 Trial
 
-y_out = esn.predict(X_valid.float())
+y_out = esn.predict(X_valid.T.float())
 y_pred = y_out
 print(y_pred.shape)
 
 # %% 1 Trial: Plot
 
-src07_f.plot_evaluate_regression_report(y_valid, y_pred)
+src07_f.plot_evaluate_regression_report(y_valid.flatten(), y_pred.flatten())
 
 # %% Many Trials: Performance distribution
 hist = {}
