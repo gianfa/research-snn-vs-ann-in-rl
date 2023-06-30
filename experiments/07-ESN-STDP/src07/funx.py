@@ -72,6 +72,7 @@ def expt_generate_new_lorenz_data(
     ds_path = None,
     shift = 12,  # forecasted delay
     s = 12, r = 30, b = 2.700,
+    time_last = True, # put time dimension as last
     v: bool = False
 ):
     if shift < 1:
@@ -105,6 +106,14 @@ def expt_generate_new_lorenz_data(
     y_train = torch.tensor(y_train, dtype=torch.float).unsqueeze(1)
     y_valid = torch.tensor(y_valid, dtype=torch.float).unsqueeze(1)
     y_test = torch.tensor(y_test, dtype=torch.float).unsqueeze(1)
+
+    if time_last:
+        X_train = X_train.T
+        X_valid = X_valid.T
+        X_test = X_test.T
+        y_train = y_train.T
+        y_valid = y_valid.T
+        y_test = y_test.T
 
     print(
         X_train.shape, y_train.shape,
