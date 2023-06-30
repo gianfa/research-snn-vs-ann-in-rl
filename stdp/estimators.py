@@ -272,7 +272,7 @@ class BaseESN(nn.Module):
                 torch.matmul(self.W_in, inputs[t]) +
                 torch.matmul(self.W, X[:, t-1].T))
 
-            X_[:, t] = ( 1. - self.decay) *X_temporaneo[:, t]
+            X_[:, t] = ( 1. - self.decay) *X_[:, t -1 ] + self.decay *X_temporaneo[:, t]
             
 
         # Apply the initial Washout
