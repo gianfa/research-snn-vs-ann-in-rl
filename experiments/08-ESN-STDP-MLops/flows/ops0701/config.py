@@ -20,6 +20,8 @@ EXP_DIR = ROOT/'experiments/08-ESN-STDP-MLops'
 EXP_DATA_DIR = EXP_DIR/'data'
 EXP_REPORT_DIR = EXP_DIR/'report'
 
+SUBEXP_DATA_DIR = EXP_DATA_DIR/"exp-2/produced_data"
+
 logger = setup_logger('ESN-STDP-Lorenz')
 
 def load_yaml(fpath: str = None) -> Dict[str, object]:

@@ -68,11 +68,12 @@ recompute = False
 
 # %%
 
-if __name__ == '__main__':
-    params = argparse_config()
+# if __name__ == '__main__':
+#     params = argparse_config()
 
-    print(params)
-    exit()
+params = load_yaml(EXP_DIR/'params.yaml')
+print(params)
+
 # %% Training
 
 
@@ -85,6 +86,11 @@ grid = {
     'n_STDP_steps': range(2, 10, 2),
     'STDP_scope': [10, 20, 30],
     'reservoir_size': [10, 50, 100, 200, 500, 1000],
+    'decay': [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1],
+    # 'A_plus': [0.1, 0.2, 0.5, 0.7],
+    # 'A_minus': [0.1, 0.2, 0.5, 0.7],
+    # 'tau_plus': np.logspace(-3, -1.5, 5),
+    # 'tau_minus': np.logspace(-3, -1.5, 5),
 }
 
 grid_tuples = list(itertools.product(*grid.values()))
@@ -93,6 +99,7 @@ with Live(save_dvc_exp=True) as live:
     grid_names = list(grid.keys())
     for exp_i, exp_pi in enumerate(grid_tuples):
         
+        exp_dict = {ni: vi for ni, vi in zip(grid_names, exp_pi)}
         # prepare folder
         exp_name = f"{exp_pi}"
         exp_dir = SUBEXP_RESULTS_DIR/exp_name
@@ -100,17 +107,22 @@ with Live(save_dvc_exp=True) as live:
             os.mkdir(exp_dir)
 
         # update params
-        params['data']['example_len'] = exp_pi[0]
-        params['data']['shift'] = exp_pi[1]
-        params['experiment']['n_STDP_steps'] = exp_pi[2]
-        params['experiment']['STDP_scope'] = exp_pi[3]
+        params['data']['example_len'] = exp_dict['example_len']
+        params['data']['shift'] = exp_dict['shift']
+        params['experiment']['n_STDP_steps'] = exp_dict['n_STDP_steps']
+        params['experiment']['STDP_scope'] = exp_dict['STDP_scope']
+        params['model']['decay'] = exp_dict['decay']
+        # params['STDP']['A_plus'] = exp_dict['A_plus']
+        # params['STDP']['A_minus'] = exp_dict['A_minus']
+        # params['STDP']['tau_plus'] = exp_dict['tau_plus']
+        # params['STDP']['tau_minus'] = exp_dict['tau_minus']
             
         pickle_save_dict(exp_dir/"params.pkl", params)
         print(params)
 
 
         reservoir_size = params['model']['reservoir_size']
-        STDP_scope = params['model']['STDP_scope']
+        STDP_scope = params['experiment']['STDP_scope']
 
         # STDP-Execute
         """ Many trials implementing STDP ESN weights update
@@ -159,7 +171,8 @@ with Live(save_dvc_exp=True) as live:
                 recompute = True,
                 ds_path = exp_dir/f"ds_lorenz.pkl",
                 shift = params['data']['shift'],  # forecasted delay
-                s=12, r=30, b=2.700
+                s=12, r=30, b=2.700,
+                time_last = True,
             )
 
         W_hist_nonstdp = []
@@ -170,9 +183,9 @@ with Live(save_dvc_exp=True) as live:
             print(f"INFO: Trial #{i}")
 
             esn = BaseESN(
-                input_size = X_train.shape[1],
+                input_size = X_train.shape[0],
                 reservoir_size=reservoir_size,
-                output_size = y_train.shape[1],
+                output_size = y_train.shape[0],
                 connections = (stdp_f.generate_simple_circle_connections_mask(
                     (reservoir_size, reservoir_size)) > 0).int(),
             )
@@ -212,10 +225,10 @@ with Live(save_dvc_exp=True) as live:
                     dw_rule = "sum",
                     max_delta_t=4,
                     STDP_kwargs={
-                        'A_plus'=0.2,
-                        'A_minus'=0.2,
-                        'tau_plus'=5e-3,
-                        'tau_minus'=4.8e-3
+                        'A_plus': params['STDP']['A_plus'],
+                        'A_minus': params['STDP']['A_minus'],
+                        'tau_plus': params['STDP']['tau_plus'],
+                        'tau_minus': params['STDP']['tau_minus']
                     }
                 )
                 # Normalize weights
@@ -288,3 +301,5 @@ with Live(save_dvc_exp=True) as live:
             exp_dir/'W_hist_stdp.pkl', {'W_hist_stdp': W_hist_stdp})
         pickle_save_dict(
             exp_dir/'W_hist_nonstdp.pkl', {'W_hist_nonstdp': W_hist_nonstdp})
+
+# %%
