@@ -47,6 +47,14 @@ dt = params_cols[0].slider(
 n_steps = params_cols[0].slider(
     label="num of steps", min_value=0, max_value=200, value=100, step=1)
 
+random_init_W = True
+toggle_checkbox = st.checkbox("Disable Random W init for $W_{\\text{LIF\_in}}$ and $W_{\\text{LIF\_LIF}}$")
+if toggle_checkbox:
+    random_init_W = False
+    st.write("$W_{\\text{LIF\_LIF}}$ fixed")
+else:
+    st.write("$W_{\\text{LIF\_LIF}}$ random init")
+
 
 params_cols[1].write("Neuron parameters")
 lif1_beta = params_cols[1].slider(
@@ -195,8 +203,20 @@ A_lif_lif = torch.tensor([
 
 # Connections weights
 # They are not the adj matrix, since each of them is trainable as a whole.
+
+# fixed weights, if random init is disabled
+W_lif_in = torch.ones_like(A_lif_in).T
+W_lif_lif = torch.ones_like(A_lif_lif)
+
 in_lif = nn.Linear(*A_lif_in.shape)  # [=] (input, lif.size = N)
 lif_lif = nn.Linear(*A_lif_lif.shape)  # [=] (lif.size, lif.size)
+
+if not random_init_W:
+    in_lif.weight = nn.Parameter(W_lif_in)
+    lif_lif.weight = nn.Parameter(W_lif_lif)
+else:
+    W_lif_in = in_lif.weight
+    W_lif_lif = lif_lif.weight
 
 for step in range(n_steps):
 
@@ -204,7 +224,8 @@ for step in range(n_steps):
 
     if step % 1 == 0 or step == 0:
         # input to lif; plus connections mask
-        cur_in_lif = in_lif(input) * A_lif_in  # [=] (1, N)
+        #   in_lif(input) := input . in_lif.weight, if in_lif.weight is diagonal
+        cur_in_lif = torch.mul(in_lif(input), A_lif_in)  # [=] (1, N)
     # threshold the prev activations; plus lif-lif connections mask
     # cur_lif_lif [=] (N) !! TODO: FROM HERE
     a_lif = thresholded_relu(mem1, lif1.threshold).squeeze().to(torch.float)
@@ -296,20 +317,22 @@ st.pyplot(fig)
 col1, col2 = st.columns(2)
 
 with col2:
-    st.latex("A_{LIF,in}= " + latek_from_tensor(A_lif_in.T))
-    st.latex("A_{LIF,LIF}=" + latek_from_tensor(A_lif_lif))
+    st.latex("A_{LIF,in}= " + latek_from_tensor(A_lif_in.T)+"; A_{LIF,LIF}=" + latek_from_tensor(A_lif_lif))
+    st.latex("W_{LIF,in}= " + latek_from_tensor(W_lif_in.T)+"; W_{LIF,LIF}=" + latek_from_tensor(W_lif_lif))
     st.latex("\sigma(x; th) = \n\\begin{cases} \nx, & \\text{if } x > \\text{th}  \\\\  \n0, & \\text{otherwise} \n\\end{cases}")
-    st.latex(r"I[t]_{LIF,in} = I[t]_{in} \circ A_{LIF,in}");
+    st.latex(r"I[t]_{LIF,in} = I[t]_{in} \circ A_{LIF,in} \circ W_{LIF,in}");
     st.latex(r"a[t-1]_{LIF} = \sigma (m[t-1]_{LIF}) ")
-    st.latex(r"m[t]_{LIF} = LIF(I[t]_{LIF,in} + a[t-1]_{LIF} \cdot A_{LIF,LIF})")
+    st.latex(r"m[t]_{LIF} = LIF(I[t]_{LIF,in} + a[t-1]_{LIF}  \cdot  W_{LIF,LIF} \circ A_{LIF,LIF})")
 
 with col1:
     st.markdown("$A_{b, a}$: Adjacency Matrix from a to b")
+    st.markdown("$W_{b, a}$: Weights Matrix from a to b")
     st.markdown("$I_{in}$: Input current  signal")
     st.markdown("$I_{LIF, in}$: Input current to the LIF layer")
     st.markdown("$m_{LIF}$: Membrane Potential of the LIF layer")
     st.markdown("$\sigma(x; th)$: Activation function")
     st.markdown("$a_{LIF}$: Activation of the LIF layer")
+    st.markdown("$a \circ b$: Hadamard product between a and b. Mostly used here for masking")
 
 # ------
 
