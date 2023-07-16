@@ -40,3 +40,8 @@ def plot_n_examples(
             ax.axis("off")
     fig.tight_layout()
     return axs
+
+
+def get_cmap_colors(N, cmap='brg'):
+    cmap = plt.cm.get_cmap(cmap)
+    return [cmap(value) for value in np.linspace(0, 1, N)]

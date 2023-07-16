@@ -4,10 +4,13 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import os
+from pathlib import Path
 import pickle
 import time
+from typing import Dict
 
 import torch
+import yaml
 
 def compare_sample_from_data(
     data: torch.Tensor,
@@ -32,7 +35,18 @@ def compare_sample_from_data(
     return axs
 
 
-def pickle_save_dict(fpath: str, d: dict) -> str:
+def load_yaml(fpath: str = '../params.yaml') -> Dict[str, object]:
+    params = None
+    with open(fpath, "r") as stream:
+        try:
+            params = yaml.safe_load(stream)
+            print(params)
+        except yaml.YAMLError as e:
+            print(e)
+    return params
+
+
+def pickle_save_dict(fpath: str or Path, d: dict) -> str:
     with open(fpath, "wb") as handle:
         pickle.dump(d, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
@@ -60,3 +74,11 @@ def generate_random_name(length: str = 22, with_timestamp: bool = True) -> str:
     rand_chars = "".join(
         [bank[ci] for ci in np.random.choice(len(bank), to_len)])
     return f"{tstamp}-{rand_chars}"
+
+
+def moving_average(signal: np.array, window_size: int = None) -> np.array:
+    if not window_size:
+        window_size = max(round(len(signal) * 0.05), 1)
+    window = np.ones(window_size) / window_size
+    smoothed_signal = np.convolve(signal, window, mode='same')
+    return smoothed_signal

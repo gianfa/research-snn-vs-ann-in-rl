@@ -110,7 +110,6 @@ class ESN(nn.Module):
         output = self.W_out(x).unsqueeze(1)
         return output
 
-
     def train(
             self,
             X: torch.TensorType,
@@ -165,7 +164,153 @@ class ESN(nn.Module):
             except NameError as e:
                 print("WARN| Matplotlib not loaded or missing")
         return
+    
+    # TODO: test
+    def predict(self, X: torch.TensorType) -> torch.Tensor:
+        return torch.stack(
+            [self.__call__(
+            Xi.unsqueeze(0).to(torch.float32)).detach()
+                for Xi in X]).squeeze()
         
+
+class BaseESN(nn.Module):
+    """Base Echo State Netowrk
+
+    Parameters
+    ----------
+    input_size : int
+        Nu, size of each time step vector slice of the input signal.
+    reservoir_size : int
+        Nx, size of the Reservoir.
+    output_size : int
+        Ny, size of each time step vector slice of the input signal.
+    spectral_radius : float, optional
+        _description_, by default 0.9
+    connections : torch.Tensor, optional
+        (Ny, Ny). Recurrent connections intra-Reservoir. by default None
+    connectivity : float, optional
+        _description_, by default 0.3
+    decay : float, optional
+        _description_, by default 1
+    
+        
+    References
+    ----------
+    1. LUKOŠEVIČIUS, Mantas. A practical guide to applying echo state networks.
+     Neural Networks: Tricks of the Trade: Second Edition, 2012, 659-686.
+    """
+    def __init__(
+            self,
+            input_size: int,
+            reservoir_size: int,
+            output_size: int,
+            spectral_radius: float = 0.9,
+            connections: torch.Tensor = None,
+            connectivity: float = 0.3,
+            decay: float = 1,
+            washout: int = 0,
+        ):
+        self.input_size = input_size
+        self.reservoir_size = reservoir_size
+        self.output_size = output_size
+        self.spectral_radius = spectral_radius
+        self.connections = connections
+        self.connectivity = connectivity
+        self.decay =  decay
+        self.washout = washout
+
+        # Weights initialization
+        self.W_in = (torch.rand(reservoir_size, input_size) - 0.5).float()
+        self.W = (torch.rand(reservoir_size, reservoir_size) - 0.5).float()
+        self.W_out = None
+
+        # Weights scaling
+        self.W_in *= 2.0
+        self.W *= 2.0
+
+        if self.connections is None:
+            # Random connection in reservoir
+            self.connections = generate_random_connections_mask(
+                (reservoir_size, reservoir_size), self.connectivity).float()
+            # mask = generate_simple_circle_connections_mask(
+            #     (reservoir_size, reservoir_size))
+            print(self.connections.shape)
+        
+        self.W *= self.connections
+
+        # spectral radius
+        max_eigenvalue = torch.max(
+            torch.abs(torch.linalg.eig(self.W).eigenvalues))
+        self.W /= max_eigenvalue / spectral_radius
+
+    def train(
+            self,
+            inputs: torch.Tensor,
+            targets: torch.Tensor
+        ) -> torch.Tensor:
+        """Train the ESN
+
+        Parameters
+        ----------
+        inputs : torch.Tensor
+            The input signal, namely the examples data, in supervised ML.
+        targets : torch.Tensor
+            The output signal, or target, namely the label data, in supervised ML.
+        washout : int, optional
+            The time steps to discard before to consider signal for the training. Useful for the network to synchronize. by default 100.
+
+        Returns
+        -------
+        X
+            The Reservoir states during training
+        """
+
+        # X: reservoir states collector [=] (Nx, t)
+        #                               [=] (reservoir_size, t)
+        X = torch.zeros((self.reservoir_size, inputs.shape[1])).float()
+
+        # Reservoir Feedforward
+        for t in range(1, inputs.shape[1]):
+
+            # [Lukoˇseviˇcius, 2012, eqs. 2,3]
+            X_temp = torch.tanh(
+                torch.matmul(self.W_in, inputs[:, t]) +
+                torch.matmul(self.W, X[:, t-1].T))
+            
+            X[:, t] = (1. - self.decay) * X[:, t -1] + self.decay * X_temp
+
+        # [Lukoˇseviˇcius, 2012, eq. 4]
+        # Apply the washout
+        X = X[:, self.washout:]
+
+        # Train W_out [=] (Ny, Nu + Nx)
+        concat_mat = torch.vstack((inputs[:, self.washout:], X))
+        self.W_out = torch.matmul(
+            targets[:, self.washout:].float(), torch.pinverse(concat_mat))
+        return X
+
+    def predict(self, inputs: torch.Tensor):
+        X = torch.zeros((self.reservoir_size, inputs.shape[1])).float()
+
+         # Reservoir Feedforward
+        for t in range(1, inputs.shape[1]):
+            # [Lukoˇseviˇcius, 2012, eqs. 2,3]
+            X_temp = torch.tanh(
+                torch.matmul(self.W_in, inputs[:, t]) +
+                torch.matmul(self.W, X[:, t-1].T))
+            
+            X[:, t] = (1. - self.decay) * X[:, t -1] + self.decay * X_temp
+
+        # Apply the washout
+        X = X[:, self.washout:]
+    
+        # Output prediction  [=] (Ny)
+        concat_mat = torch.vstack((inputs[:, self.washout:], X))
+        predictions = torch.matmul(self.W_out, concat_mat)
+        return predictions
+        # print(inputs.shape, X.shape, self.reservoir_size)
+
+
 
 
 def define_spiking_cluster(
