@@ -224,7 +224,8 @@ for step in range(n_steps):
 
     if step % 1 == 0 or step == 0:
         # input to lif; plus connections mask
-        cur_in_lif = in_lif(input) * A_lif_in  # [=] (1, N)
+        #   in_lif(input) := input . in_lif.weight, if in_lif.weight is diagonal
+        cur_in_lif = torch.mul(in_lif(input), A_lif_in)  # [=] (1, N)
     # threshold the prev activations; plus lif-lif connections mask
     # cur_lif_lif [=] (N) !! TODO: FROM HERE
     a_lif = thresholded_relu(mem1, lif1.threshold).squeeze().to(torch.float)
@@ -319,17 +320,19 @@ with col2:
     st.latex("A_{LIF,in}= " + latek_from_tensor(A_lif_in.T)+"; A_{LIF,LIF}=" + latek_from_tensor(A_lif_lif))
     st.latex("W_{LIF,in}= " + latek_from_tensor(W_lif_in.T)+"; W_{LIF,LIF}=" + latek_from_tensor(W_lif_lif))
     st.latex("\sigma(x; th) = \n\\begin{cases} \nx, & \\text{if } x > \\text{th}  \\\\  \n0, & \\text{otherwise} \n\\end{cases}")
-    st.latex(r"I[t]_{LIF,in} = I[t]_{in} \circ A_{LIF,in}");
+    st.latex(r"I[t]_{LIF,in} = I[t]_{in} \circ A_{LIF,in} \circ W_{LIF,in}");
     st.latex(r"a[t-1]_{LIF} = \sigma (m[t-1]_{LIF}) ")
-    st.latex(r"m[t]_{LIF} = LIF(I[t]_{LIF,in} + a[t-1]_{LIF} \cdot A_{LIF,LIF})")
+    st.latex(r"m[t]_{LIF} = LIF(I[t]_{LIF,in} + a[t-1]_{LIF}  \cdot  W_{LIF,LIF} \circ A_{LIF,LIF})")
 
 with col1:
     st.markdown("$A_{b, a}$: Adjacency Matrix from a to b")
+    st.markdown("$W_{b, a}$: Weights Matrix from a to b")
     st.markdown("$I_{in}$: Input current  signal")
     st.markdown("$I_{LIF, in}$: Input current to the LIF layer")
     st.markdown("$m_{LIF}$: Membrane Potential of the LIF layer")
     st.markdown("$\sigma(x; th)$: Activation function")
     st.markdown("$a_{LIF}$: Activation of the LIF layer")
+    st.markdown("$a \circ b$: Hadamard product between a and b. Mostly used here for masking")
 
 # ------
 
