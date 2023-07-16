@@ -3,6 +3,12 @@
 
 * [Google Drive Folder](https://drive.google.com/drive/folders/1mg8L234w0UKHV8RTb_CtaCxzJC0KfjkW)
 
+## Project Structure
+* [Experiments](./experimentkit/). Experiments folders. Each one contains a *flows* folder.
+* [Tutorial Apps](./streamlit_apps/). Streamlit Apps to get a better feeling about neuron models, using snnTorch.
+* [stdp](./stdp/). A library dedicated to the experiments on STDP running here. It also contains a module with estimators classes.
+* [experimentkit_in](./experimentkit_in/). A library containing tools for experiments.
+
 ## Contents
 * [Notes](#notes)
 * [Dataset candidates](#dataset-candidates)
