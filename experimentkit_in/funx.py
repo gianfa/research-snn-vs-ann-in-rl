@@ -56,9 +56,9 @@ def pickle_save_dict(fpath: str or Path, d: dict) -> str:
 
 
 def pickle_load(fpath: str):
-    if os.path.getsize(fpath) == 0:
+    if os.path.getsize(str(fpath)) == 0:
         print(f"The file '{fpath}' is empty")
-    with open(fpath, "rb") as handle:
+    with open(str(fpath), "rb") as handle:
         f = pickle.load(handle)
     return f
 

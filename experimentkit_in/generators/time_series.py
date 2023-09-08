@@ -1,4 +1,6 @@
+# %%
 from itertools import combinations
+from scipy import integrate
 from typing import List, Tuple
 
 import numpy as np
@@ -252,5 +254,75 @@ def gen_lorenz(
         xyzs[i + 1] = xyzs[i] + lorenz(xyzs[i], s=s, r=r, b=b) * dt
     return xyzs
 
+# %%
 
-# 
+
+def duffing(
+        t, X,
+        alpha: float = 1,
+        beta: float = -1,
+        gamma: float = 0.5,
+        delta: float = 0.3,
+        omega: float = 1.0,) -> List:
+    """ Derivatives of the duffing oscillator
+    
+    Examples
+    --------
+    >>> import matplotlib.pyplot as plt
+    >>> t_eval=np.linspace(t_span[0], t_span[1], n_steps)
+    >>> sol = integrate.solve_ivp(
+        duffing,
+        t_span, X0, t_eval=t_eval,
+        args = (alpha, beta, gamma, delta, omega))
+    >>> plt.figure(figsize=(10, 6))
+    >>> plt.plot(t_eval, x, label='Posizione')
+    >>> plt.plot(t_eval, v, label='Velocità')
+    >>> plt.xlabel('Tempo')
+    >>> plt.ylabel('Valori')
+    >>> plt.legend()
+    >>> plt.title('Duffing Oscillator')
+    >>> plt.grid(True)
+    >>> plt.show()
+    """
+    x, v = X
+    dxdt = v
+    dvdt = -delta * v - beta * x - alpha * x**3 + gamma * np.cos(omega * t)
+    return [dxdt, dvdt]
+
+
+def gen_duffing(
+    X0: List = [0.5, 0.0],
+    t_span: List = (0, 200),
+    n_steps: int = 1000,
+    alpha: float = 1,
+    beta: float = -1,
+    gamma: float = 0.5,
+    delta: float = 0.3,
+    omega: float = 1.0,
+) -> np.array:
+    """Generate Duffing oscillator
+    
+    Examples
+    --------
+    >>> import matplotlib.pyplot as plt
+    >>> x, v = gen_duffing()
+    >>> x, v = gen_duffing()
+    >>> plt.figure(figsize=(6, 6))
+    >>> plt.plot(x, v, label='Phase plane')
+    >>> plt.xlabel('x')
+    >>> plt.ylabel('v')
+    >>> plt.title('Phase plane')
+    >>> plt.grid(True)
+    """
+    sol = integrate.solve_ivp(
+        duffing,
+        t_span, X0, t_eval=np.linspace(t_span[0], t_span[1], n_steps),
+        args = (alpha, beta, gamma, delta, omega))
+
+    return sol.y
+
+
+
+
+
+# %%
