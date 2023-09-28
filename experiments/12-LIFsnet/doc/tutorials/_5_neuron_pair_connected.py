@@ -46,13 +46,13 @@ def thresholded_relu(x, threshold):
 
 # Define the connections between input and LIF
 # This is intended like a static synapses adjacency matrix
-conn_lif_I = torch.tensor([.2, .5]).reshape(2, 1)
+conn_lif_I = torch.tensor([1., 1.]).reshape(2, 1)
 
 # Define the connection matrix between LIF and LIF
 # This is intended like a static synapses adjacency matrix
 conn_lif_lif = torch.tensor([
-    [0, .5],
-    [.7, 0]])
+    [0, 1.],
+    [.1, 0]])
 
 # ---- Simulate ----
 

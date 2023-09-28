@@ -1,11 +1,21 @@
-""" Simple LSM, not learning
+""" Simple LSM - learning: fitting [ISSUED]
 
 
+Fed by a periodic signal
+
+        ┌─|lif_lif|──┐
+        ߇            │
+I ----|lif_I|----> LIF_1 ---|lif_ro|---> readout -->
 
 
-        ┌─────|lif_lif|──┐
-                ߇        │
-I ----|lif_I|---------> LIF_1 ---|lif_ro|---> readout -->
+We start with a binary fitting.
+X: 0/0.3
+y: 0/1; 1 corresponds to 0.3
+
+Notes:
+1. Set initial weigths > 0; e.g. 1e-1
+2. Don't go with a neuronal input < 0.
+
 
 """
 # %% Neurons pair dynamics
@@ -18,10 +28,38 @@ import matplotlib.pyplot as plt
 
 # def test_1():
 # Small step current input
-I = torch.cat(
-    (torch.zeros(20),
-    torch.ones(110) * 0.8,
-    torch.zeros(80)), dim=0)
+
+n = 500
+duration = 3
+lr = 0.1
+
+# # Examples (X) definition
+I = torch.zeros(n)
+I_pos_idxs = torch.randperm(len(I))[:int(0.10 * n)]
+for idx in I_pos_idxs:
+    I[idx:idx+duration] = 0.3
+
+# # Labels (y) definition
+y = I.clone()
+for idx in I_pos_idxs:
+    y[idx:idx+duration] = 1
+
+fig, axs = plt.subplots(2, 1)
+axs[0].plot(torch.arange(len(I)), I)
+axs[0].set_title('I')
+axs[0].set_ylabel('amplitude')
+axs[0].set_xlabel('t')
+axs[0].grid()
+
+axs[1].plot(torch.arange(len(y)), y)
+axs[1].set_title('Labels (y)')
+axs[1].set_ylabel('')
+axs[1].set_xlabel('t')
+axs[1].set_yticks([-1, 0, 1])
+axs[1].grid()
+fig.tight_layout()
+
+# %%
 
 # Define the neuron
 lif1 = snn.Lapicque(
@@ -64,13 +102,13 @@ def thresholded_relu(x, threshold):
 
 # Define the connections between input and LIF
 # This is intended like a static synapses adjacency matrix
-conn_lif_I = torch.tensor([.2, .5]).reshape(2, 1)
+conn_lif_I = torch.tensor([0.8, 0.2]).reshape(2, 1)
 
 # Define the connection matrix between LIF and LIF
 # This is intended like a static synapses adjacency matrix
 conn_lif_lif = torch.tensor([
-    [0, .5],
-    [.5, 0]])
+    [0, -2],
+    [5., 0]])
 
 # Define the connections between LIF and readout
 # This is intended like a static synapses adjacency matrix
@@ -81,31 +119,35 @@ conn_readout_lif = torch.tensor([1., .7]).reshape(2, 1)
 # History variables
 mem_filter = [torch.zeros(2, 1)]
 spk_filter = [torch.zeros(2, 1)]
-activ_filter = [torch.zeros(2, 1)]
+activ_filter = [torch.zeros(2, 1) + 1e-2]
 
-mem_readout = [torch.zeros(1, 1)]
+mem_readout = [torch.zeros(1, 1) + 1e-2]
 spk_readout = [torch.zeros(1, 1)]
-activ_readout = [torch.zeros(1, 1)]
+activ_readout = [torch.zeros(1, 1) + 1e-2]
 
 input = []
+rec_input = []
+readout_input = []
 
 # %%
 # neuron simulation
+error_scope = 30  # n of steps to average over, in order to compute the error
+error_sum = 0
+mse = []
 for t in range(1, len(I) -1):
     # Current input: Hadamard I . conn_lif_I
     cur_input = I[t] * torch.ones(2, 1)
     
     # Recurrent input
-    rec_input = torch.matmul(conn_lif_lif, activ_filter[t-1])
+    rec_input_t = torch.matmul(conn_lif_lif, activ_filter[t-1])
 
     ### Input ###
     input_t = torch.mul(
-        cur_input + rec_input,
+        cur_input + rec_input_t,
         conn_lif_I).reshape(2, 1)
 
     ### Filter ###
     # lif1 needs 1D args
-    # spk_t, mem_t = lif1( I[t] + lif_lif_input[t-1], mem[t-1])
     spk_filter_t, mem_filter_t = lif1(
         input_t.squeeze(), mem_filter[t-1].squeeze())
     # make them columnar
@@ -115,18 +157,35 @@ for t in range(1, len(I) -1):
     activ_filter_t = thresholded_relu(1 * mem_filter_t, lif1.threshold)
 
     ### Readout ###
-    readout_input = torch.matmul(
+    readout_input_t = torch.matmul(
         conn_readout_lif.T,
         activ_filter_t).reshape(1, 1)
     spk_readout_t, mem_readout_t = readout(
-        readout_input, mem_readout[t-1].squeeze())
+        readout_input_t, mem_readout[t-1].squeeze())
     mem_readout_t = mem_readout_t.reshape(1, 1)
     spk_readout_t = spk_readout_t.reshape(1, 1)
 
-    activ_readout_t = thresholded_relu(1 * mem_readout_t, lif1.threshold)
+    activ_readout_t = thresholded_relu(
+        1 * mem_readout_t, readout.threshold)
+
+    ### Learning ###
+    # compute error
+    pred_y = activ_readout_t
+    error = y[t] - pred_y
+    error_sum += error
+
+    # update weigths
+    conn_readout_lif += lr * error * activ_filter_t
+
+    if t % error_scope == 0:
+        mse_t = error_sum**2 / error_scope
+        mse.append(mse_t.item())
+        error_sum = 0
+    
 
     # store current state
     input.append(input_t)
+    rec_input.append(rec_input_t)
     mem_filter.append(mem_filter_t)
     spk_filter.append(spk_filter_t)
     activ_filter.append(activ_filter_t)
@@ -134,6 +193,7 @@ for t in range(1, len(I) -1):
     mem_readout.append(mem_readout_t)
     spk_readout.append(spk_readout_t)
     activ_readout.append(activ_readout_t)
+    readout_input.append(readout_input_t)
 
 assert abs(I.shape[0] - len(input)) <= 2
 assert (
@@ -141,12 +201,23 @@ assert (
 
 # convert lists to tensors
 input = torch.stack(input)
+rec_input = torch.stack(rec_input)
 mem_filter = torch.stack(mem_filter)
 spk_filter = torch.stack(spk_filter)
 activ_filter = torch.stack(activ_filter)
 mem_readout = torch.stack(mem_readout)
 spk_readout = torch.stack(spk_readout)
+readout_input = torch.stack(readout_input)
 activ_readout = torch.stack(activ_readout)
+mse = torch.tensor(mse)
+
+# Plot MSE
+fig, ax = plt.subplots()
+ax.plot(mse)
+ax.set_title('MSE')
+ax.set_xlabel('t / error_scope')
+ax.axhline(0, linewidth=0.5)
+ax.grid()
 
 # %%
 # ---- Visualize ----
