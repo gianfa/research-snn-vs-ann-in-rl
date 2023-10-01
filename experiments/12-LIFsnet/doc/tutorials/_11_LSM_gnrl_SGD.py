@@ -19,6 +19,7 @@ Notes:
 3. Consider a decoder between y_pred and labels
 4. Consider a I baseline so that the base-activity of the neurons is sustained.
 5. Consider an error averaged over a n of steps, so to allow th dynamic to be expressed.
+6. Clip the activation shot (in thresholded relu). Otherwise it will shoot randomly.
 
 
 
