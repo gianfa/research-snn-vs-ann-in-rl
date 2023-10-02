@@ -67,7 +67,7 @@ fig.tight_layout()
 
 # %%
 
-# Define the neuron
+# Define the reservoir
 lif1_size = 10
 lif1_inhib_frac = 0.2  # inhibitory fraction
 lif1_sparsity = 0.1

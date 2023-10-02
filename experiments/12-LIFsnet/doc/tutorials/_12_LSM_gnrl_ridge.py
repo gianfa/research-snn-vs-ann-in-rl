@@ -18,6 +18,7 @@ Notes:
 2. Don't go with a neuronal input < 0.
 3. Consider a decoder between y_pred and labels
 4. Consider a I baseline so that the base-activity of the neurons is sustained.
+5. Clip the activation shot (in thresholded relu). Otherwise it will shoot randomly.
 
 Looking at the Readout plot with peaks red lines, it starts to be meaningful what we get.
 Interesting is playing with I_baseline, peaks duration, error_scope.
@@ -31,23 +32,25 @@ import torch
 import matplotlib.pyplot as plt
 
 n = 1000  # signal length (simulation step)
-duration = 3  # duration of a signal peak
+duration = 1  # duration of a signal peak
 
-lr = 0.9  # learning rate
-error_scope = 25  # n of steps to average over, in order to compute the error
+# lr = 0.4  # learning rate
+error_scope = 10  # n of steps to average over, in order to compute the error
+
 
 # ---- Define the neuron and the input current -----
 
 # # Examples (X) definition
-I = torch.zeros(n) + 0.35  # baseline
-I_pos_idxs = torch.randperm(len(I))[:int(0.08 * n)]
-for idx in I_pos_idxs:
-    I[idx:idx+duration] = 0.85
+I_baseline = 2
+I_peak = 6
+I = torch.zeros(n) + I_baseline  # baseline
+I_pos_peaks_idxs = torch.randperm(len(I))[:int(0.08 * n)]
+for idx in I_pos_peaks_idxs:
+    I[idx:idx+duration] = I_peak
 
 # # Labels (y) definition
 y = torch.zeros_like(I)
-for idx in I_pos_idxs:
-    y[idx:idx+duration] = 1
+y[torch.argwhere(I == I_peak)] = 1
 
 fig, axs = plt.subplots(2, 1)
 axs[0].plot(torch.arange(len(I)), I)
@@ -66,7 +69,11 @@ fig.tight_layout()
 
 # %%
 
-# Define the neuron
+# Define the reservoir
+lif1_size = 10
+lif1_inhib_frac = 0.2  # inhibitory fraction
+lif1_sparsity = 0  # sparsity of the lif-lif connections 
+lif1_has_autapsys = False
 lif1 = snn.Lapicque(
     beta=False,
     R=5.1,
@@ -83,7 +90,7 @@ lif1 = snn.Lapicque(
     output=False,
 )
 
-
+readout_size = 1
 readout = snn.Lapicque(
     beta=False,
     R=5.1,
@@ -101,40 +108,56 @@ readout = snn.Lapicque(
 )
 
 
-def thresholded_relu(x, threshold):
-    return torch.where(x > threshold, x, 0)
+def thresholded_relu(x, threshold, clip_value=None):
+    clip_value_ = clip_value or threshold * 1.2
+    return torch.where(x > threshold, x.clip(max=clip_value_), 0)
 
 
+lif_I_sparsity = 0  # sparsity of the lif-I connections
 # Define the connections between input and LIF
 # This is intended like a static synapses adjacency matrix
-conn_lif_I = torch.tensor(
-    [0.8, 0.2, 0.3, 0.5, 0.6]).reshape(5, 1)
+conn_lif_I = torch.rand(lif1_size).reshape(lif1_size, 1)
+# -sparsity-
+if lif1_sparsity > 0:
+    lif_I_dense_idxs = torch.argwhere(conn_lif_I)
+    lif_I_tooff_idxs = lif_I_dense_idxs[torch.randperm(
+        len(lif_I_dense_idxs))[:int(lif1_size * lif_I_sparsity)]]
+    conn_lif_I[lif_I_tooff_idxs[:, 0], lif_I_tooff_idxs[:, 1]] = 0
+
 
 # Define the connection matrix between LIF and LIF
 # This is intended like a static synapses adjacency matrix
-conn_lif_lif = torch.tensor([
-    [0, -0.5, .9 , .6, .2],
-    [0,  0, 0 , 0, .2],
-    [.2, -.4, 0 , 0, .2],
-    [0, .1, 0 , 0, .2],
-    [1., .3, 0 , -.2,  0],
-    ])
+# -inhibitors-
+inhib_idxs = torch.randperm(lif1_size)[:int(lif1_size * lif1_inhib_frac)]
+conn_lif_lif = torch.rand(lif1_size**2).reshape(lif1_size, lif1_size)
+conn_lif_lif[inhib_idxs] = conn_lif_lif[inhib_idxs] * -1
+# -autapsys-
+if not lif1_has_autapsys:
+    conn_lif_lif[torch.arange(lif1_size), torch.arange(lif1_size)] = 0
+# -sparsity-
+if lif1_sparsity > 0:
+    lif1_dense_idxs = torch.argwhere(conn_lif_lif)
+    lif1_tooff_idxs = lif1_dense_idxs[torch.randperm(
+        len(lif1_dense_idxs))[:int(lif1_size**2 * lif1_sparsity)]]
+    conn_lif_lif[lif1_tooff_idxs[:, 0], lif1_tooff_idxs[:, 1]] = 0
+    # len(torch.argwhere(conn_lif_lif))/(lif1_size*lif1_size)
 
 # Define the connections between LIF and readout
 # This is intended like a static synapses adjacency matrix
-conn_readout_lif = torch.tensor(
-    [0.8, 0.2, -0.3, 0.9, 0.6]).reshape(5, 1)
+conn_readout_lif = torch.rand(
+    lif1_size * readout_size).reshape(lif1_size, readout_size)
+
 
 # ---- Simulate ----
 
 # History variables
-mem_filter = [torch.zeros(5, 1)]
-spk_filter = [torch.zeros(5, 1)]
-activ_filter = [torch.zeros(5, 1) + 1e-2]
+mem_filter = [torch.zeros(lif1_size, 1)]
+spk_filter = [torch.zeros(lif1_size, 1)]
+activ_filter = [torch.zeros(lif1_size, 1) + 1e-2]
 
-mem_readout = [torch.zeros(1, 1) + 1e-2]
-spk_readout = [torch.zeros(1, 1)]
-activ_readout = [torch.zeros(1, 1) + 1e-2]
+mem_readout = [torch.zeros(readout_size, 1) + 1e-2]
+spk_readout = [torch.zeros(readout_size, 1)]
+activ_readout = [torch.zeros(readout_size, 1) + 1e-2]
 conn_readout_lif_coll = [conn_readout_lif]
 
 input = []
@@ -147,7 +170,7 @@ error_sum = 0
 mse = []
 for t in range(1, len(I) -1):
     # Current input: Hadamard I . conn_lif_I
-    cur_input = I[t] * torch.ones(5, 1)
+    cur_input = I[t] * torch.ones(lif1_size, 1)
     
     # Recurrent input
     rec_input_t = torch.matmul(conn_lif_lif, activ_filter[t-1])
@@ -155,7 +178,7 @@ for t in range(1, len(I) -1):
     ### Input ###
     input_t = torch.mul(
         cur_input + rec_input_t,
-        conn_lif_I).reshape(5, 1)
+        conn_lif_I).reshape(lif1_size, 1)
 
     ### Filter ###
     # lif1 needs 1D args
@@ -170,11 +193,11 @@ for t in range(1, len(I) -1):
     ### Readout ###
     readout_input_t = torch.matmul(
         conn_readout_lif.T,
-        activ_filter_t).reshape(1, 1)
+        activ_filter_t).reshape(readout_size, 1)
     spk_readout_t, mem_readout_t = readout(
-        readout_input_t, mem_readout[t-1].squeeze())
-    mem_readout_t = mem_readout_t.reshape(1, 1)
-    spk_readout_t = spk_readout_t.reshape(1, 1)
+        readout_input_t.flatten(), mem_readout[t-1].flatten())
+    mem_readout_t = mem_readout_t.reshape(readout_size, 1)
+    spk_readout_t = spk_readout_t.reshape(readout_size, 1)
 
     activ_readout_t = thresholded_relu(
         1 * mem_readout_t, readout.threshold)
@@ -190,8 +213,22 @@ for t in range(1, len(I) -1):
     # conn_readout_lif += (lr * error * activ_filter_t)
     # opt2. scope-wise
     if t % error_scope == 0:
-        conn_readout_lif += (lr * error.mean() * activ_filter_t)
+        ridge_lambda = 0.1
 
+        redout_in = torch.stack(activ_filter[-error_scope:]).clone().squeeze()
+        XTX = torch.matmul(redout_in.t(), redout_in).reshape(
+            lif1_size, lif1_size)
+        Xy = torch.matmul(redout_in.t(), y[-error_scope:]).reshape(
+            lif1_size, readout_size)
+        Id = torch.eye(redout_in.shape[1]).reshape(
+            lif1_size, lif1_size)
+        inverse = torch.inverse(XTX + ridge_lambda * Id).reshape(
+            lif1_size, lif1_size)
+        conn_readout_lif = (
+            inverse
+            .matmul(redout_in.T)
+            .matmul(y[-error_scope:])).reshape(lif1_size, readout_size)
+        # print(t, ": ", conn_readout_lif)
 
     if t % error_scope == 0:
         mse_t = error_sum**2 / error_scope
@@ -246,10 +283,9 @@ ax.set_title('conn_readout_lif_coll - 0')
 # %%
 # ---- Visualize ----
 
-axs = []
 added_plots = 3
 tot_plots = added_plots + mem_filter.shape[1] + mem_readout.shape[1]
-fig, axs = plt.subplots(tot_plots, 1, sharex=True, figsize=(7, 12))
+fig, axs = plt.subplots(tot_plots, 1, sharex=True, figsize=(7, 18))
 
 axs[0].plot(I, c="red")
 axs[0].set_ylabel(f"$I$", rotation=0)
@@ -268,7 +304,7 @@ for i, ax in enumerate(
     if i == 0:
         ax.set_title(f"Filter")
     ax.plot(mem_filter.squeeze()[:, i])
-    ax.set_ylabel(f"$V_n{i}$", rotation=0)
+    ax.set_title(f"$V_n{i}$", rotation=0)
     ax.grid()
     ax.set_xlabel(r"$t_{i}$")
 
@@ -284,5 +320,38 @@ for y_id in torch.argwhere(y):
     ax.axvline(y_id, c='r', linewidth=0.3)
 
 fig.tight_layout()
+
+# %% Compare spikes at the readout
+
+fig, axs = plt.subplots(2, 1, sharex=True, figsize=(13, 4))
+axs[0].plot(mem_readout[:, 0], label=r'$V_{mem}$')
+axs[0].set_title(f"Readout")
+axs[0].set_xlabel(r"$t_{i}$")
+axs[0].grid()
+
+axs[0].axhline(
+    readout.threshold,
+    linestyle='dashed',
+    c='k', linewidth=1, label='threshold')
+axs[0].legend()
+
+for spk_pos in torch.argwhere(mem_readout[:, 0] >= readout.threshold):
+    axs[0].axvline(spk_pos[0], linewidth=0.5, c='green')
+
+# --
+for spk_pos in torch.argwhere(mem_readout[:, 0] >= readout.threshold):
+    axs[1].axvline(spk_pos[0], ymin=0.5, ymax=1, linewidth=0.3, c='green')
+
+for y_id in torch.argwhere(y):
+    axs[1].axvline(y_id, ymin=0, ymax=0.5, c='r', linewidth=0.3)
+
+y_pred = torch.zeros_like(mem_readout).flatten()
+y_pred[torch.argwhere(mem_readout[:, 0] >= readout.threshold)] = 1
+
+y_true = torch.zeros_like(mem_readout).flatten()
+y_true[torch.argwhere(y)-1] = 1
+
+accuracy = abs(y_pred - y_true).mean()
+print(f"accuracy: {accuracy:.2f}")
 
 # %%
