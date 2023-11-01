@@ -46,6 +46,12 @@ def load_yaml(fpath: str = '../params.yaml') -> Dict[str, object]:
     return params
 
 
+def yaml_save_dict(fpath: str, d: dict) -> str:
+    with open(fpath, 'w') as file:
+        yaml.dump(d, file)
+    return fpath
+
+
 def pickle_save_dict(fpath: str or Path, d: dict) -> str:
     with open(fpath, "wb") as handle:
         pickle.dump(d, handle, protocol=pickle.HIGHEST_PROTOCOL)

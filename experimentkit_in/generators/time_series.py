@@ -46,22 +46,26 @@ def gen_simple_sin(
         length: int,
         frequency: float,
         amplitude: float = 1,
-        base_line: float = 0) -> np.array:
-    t = np.arange(length)
-    return amplitude * np.sin(2 * np.pi * frequency * t / length) + base_line
-
+        base_line: float = 0,
+        sampling_rate: int = 10) -> np.array:
+    t = np.arange(0, length, 1/sampling_rate)
+    return amplitude * np.sin(2 * np.pi * frequency * t/length) + base_line
 
 def gen_random_artifacts(
         num_signals: int,
         min_length: int,
         max_length: int,
         min_frequency: float,
-        max_frequency: float) -> list:
+        max_frequency: float,
+        amplitude: float = 1,
+        sampling_rate: int = 100) -> list:
     artifacts = []
     for _ in range(num_signals):
         length = np.random.randint(min_length, max_length + 1)
         frequency = np.random.uniform(min_frequency, max_frequency)
-        signal = gen_simple_sin(length, frequency)
+        signal = gen_simple_sin(
+            length=length, frequency=frequency,
+            amplitude=amplitude, sampling_rate=sampling_rate)
         artifacts.append(signal)
     return artifacts
 
