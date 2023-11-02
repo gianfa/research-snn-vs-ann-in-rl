@@ -1,0 +1,53 @@
+method: random
+metric:
+  goal: minimize
+  name: loss_val
+parameters:
+  net_reservoir_size:
+    value: 50
+  base_input_current_type:
+    value: noisy
+  base_input_current_gain:
+    value: 0
+  neuron_learn_beta:
+    value: False
+  neuron_learn_threshold:
+    value: False
+  lif_i_input_n:
+    value: 10
+  lif_i_gain:
+    value: .5
+  lif_lif_gain:
+    value: .5
+  lif_lif_weights_dist:
+    value: normal
+
+  radius:
+    distribution: uniform
+    min: 1
+    max: 22
+  degree:
+    distribution: uniform
+    min: 1
+    max: 5
+
+  enable_dyn_synapses:
+    value: True
+  syn_initial_conductance:
+    value: 1
+  syn_decay_rate_dist:
+    value: normal
+  syn_decay_rate:
+    value: .25
+  ro_lif_output_n:
+    value: 10
+  optim_lr:
+    value: .1
+  training_epochs:
+    value: 1
+  training_loss_scope:
+    value: 250
+  training_buffer_capacity:
+    value: 250
+  training_washout_time:
+    value: 1000
