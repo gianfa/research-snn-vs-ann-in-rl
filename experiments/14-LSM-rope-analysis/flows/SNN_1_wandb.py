@@ -61,7 +61,7 @@ wandb.login()
 # %% Project Parameters
 
 
-RUN_PREFIX = f'trial1'
+RUN_PREFIX = f'trial3-overall'
 data_path = EXP_DATA_DIR/"2freq_toy_ds-20000-sr_50-n_29.pkl"
 
 # %% Project setup
@@ -180,6 +180,10 @@ def wandb_main():
     assert conn_lif_lif.diag().sum() == 0
 
     # conn_lif_lif = torch.ones(reservoir_size, reservoir_size) * 0.05
+
+    ek.funx.pickle_save_dict(
+        RUN_REPORT_DIR/"reservoir_topology.pkl",
+        {'conn_lif_lif': conn_lif_lif})
 
     lif1_has_autapsys = False
     lif1_sparsity = 0
@@ -374,6 +378,7 @@ def wandb_main():
         ax.plot(acc_hist)
         acc_mean = acc_hist.mean()
         acc_last_mean = acc_hist[-int(len(acc_hist)*.1):].mean()
+        loss_last_mean = losses[-int(len(losses)*.1):].mean()
         ax.set_title(f"Accuracy| mean: {acc_mean:.2f}, last 10% mean: {acc_last_mean:.2f}")
         ax.set_xlabel("iteration/dw")
         fname = RUN_REPORT_DIR/"accuracy.png"
@@ -381,7 +386,8 @@ def wandb_main():
 
         wandb.log({
             "acc_mean": acc_mean,
-            "acc_last_mean": acc_last_mean
+            "acc_last_mean": acc_last_mean,
+            "loss_last_mean": loss_last_mean
         })
 
     #%% Visualization
