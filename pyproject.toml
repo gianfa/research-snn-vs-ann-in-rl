@@ -29,6 +29,7 @@ plotly = "^5.14.1"
 # dvclive = "^2.12.0"
 wandb = "^0.15.5"
 opencv-python = "^4.8.0.74"
+dataframe-image = "^0.2.2"
 
 [tool.poetry.dev-dependencies]
 autopep8 = "^2.0.0"
