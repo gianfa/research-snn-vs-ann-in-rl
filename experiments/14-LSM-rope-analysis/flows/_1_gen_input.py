@@ -20,9 +20,6 @@ error_scope = 30  # n of steps to average over, in order to compute the error
 import sys
 
 sys.path += ['../../../', '../../11-LSTM/']
-import matplotlib.pyplot as plt
-import src11
-import torch
 
 from experimentkit_in.funx import pickle_load, pickle_save_dict
 from experimentkit_in.generators.time_series import (add_artifacts_to_signal,
