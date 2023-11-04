@@ -52,11 +52,6 @@ from torchvision import datasets, transforms
 sys.path += ['../', '../../../']
 from _0_config import *
 
-from src_14 import funx, synapse, topologies, visualization
-
-from experimentkit_in.funx import (generate_random_name, load_yaml,
-                                   pickle_load, pickle_save_dict,
-                                   yaml_save_dict)
 from experimentkit_in.logger_config import setup_logger
 
 # %% Project Parameters
@@ -88,10 +83,8 @@ else:
     data, targets = I, y
     ek.funx.pickle_save_dict(data_path, {'I': I, 'y': y})
 
-
-
 params = ek.funx.load_yaml(EXP_DIR/"flows/params.yaml")
-ek.funx.yaml_save_dict(RUN_REPORT_DIR/"params.pkl", params)
+ek.funx.yaml_save_dict(RUN_REPORT_DIR/"params.yaml", params)
 
 # %% Data Preparation
 
@@ -261,9 +254,9 @@ loss_scope = params['training']['loss_scope']
 eval_scope = loss_scope
 
 buffer_capacity = params['training']['buffer_capacity']
-yi_pred_buffer = funx.FIFO_buffer(capacity=buffer_capacity)
-yi_pred_logits_buffer = funx.FIFO_buffer(capacity=buffer_capacity)
-yi_buffer = funx.FIFO_buffer(capacity=buffer_capacity)
+yi_pred_buffer = src_14.funx.FIFO_buffer(capacity=buffer_capacity)
+yi_pred_logits_buffer = src_14.funx.FIFO_buffer(capacity=buffer_capacity)
+yi_buffer = src_14.funx.FIFO_buffer(capacity=buffer_capacity)
 
 washout_time = params['training']['washout_time']
 
