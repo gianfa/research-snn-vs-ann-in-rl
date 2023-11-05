@@ -1,15 +1,15 @@
 # Topological Analysis
 
-### The signal
+### The Signal
 The signal on which the network was trained consists of a constant baseline and alternating fragments whose frequency can be one of two possible
 
-## The  network
+## The Network
 
 <img src='./imgs/network1.png'>
 
 The neural network is a Liquid State Machine (LSM) \[Maas, 2002\], with the following characteristics.
 
-### The reservoir
+### The Reservoir
 
 * Total number of neurons: 20
 * Number of input neurons: 10
@@ -17,7 +17,7 @@ The neural network is a Liquid State Machine (LSM) \[Maas, 2002\], with the foll
 * Weights values randomly assigned (Normal)
 * Synaptic connections with decay
    * Randomly distributed (Normal)
-   * decay function: $g[t+1] = g[t] * q$, with $g$ synaptic gain (conductance) and $q \in [0,1]$, decay rate.
+   * decay function: $g[t+1] = q \cdot g[t]$, with $g$ synaptic gain (conductance) and $q \in [0, 1]$ decay rate.
    * decay rate: .25
 
 ### The Readout
@@ -34,7 +34,7 @@ At each training step the network receives a signal element.
 The network subsequently completes an entire propagation step between the layers until a prediction is reached.  
 A buffer of a specific size, sequentially collects a specific amount of network outputs.
 
-### The loss computation
+### The Loss Computation
 At a specific step interval, $l_{scope}$ (250), the loss is calculated over the the whole buffer.
 
 
@@ -55,17 +55,25 @@ The performance metrics chosen here is the average prediction accuracy in the la
 ## Visualization
 Below we see a representation of the average performance obtained by connection position on the adjacency matrix.
 
-Each graph was obtained by multiplying the binary adjacency matrix of each run by $acc_{10p}$ and finally averaging for each cell.
+<img src='./topological_analysis/perf_x_pos-mean.png'>
+<!-- Each graph was obtained by multiplying the binary adjacency matrix of each run by $acc_{10p}$ and finally averaging for each cell.
 
 <img src='./topological_analysis/avg_acc_per_pos-ressize_20-d_1-r_4.png' width=50%>
 <img src='./topological_analysis/avg_acc_per_pos-ressize_20-d_2-r_4.png' width=50%>
 <img src='./topological_analysis/avg_acc_per_pos-ressize_20-d_3-r_4.png' width=50%>
 <img src='./topological_analysis/avg_acc_per_pos-ressize_20-d_4-r_4.png' width=50%>
+<img src='./topological_analysis/avg_acc_per_pos-ressize_20-d_3-r_3.png' width=50%> -->
 
 
-Here below we see reported the same values as in the graphs above, but filtered by $acc_{10p}$ > 0.25
+<!-- Here below we see reported the same values as in the graphs above, but filtered by $acc_{10p}$ > 0.25
 
 <img src='./topological_analysis/avg_acc_per_pos-ressize_20-d_1-r_4-25pc.png' width=50%>
 <img src='./topological_analysis/avg_acc_per_pos-ressize_20-d_2-r_4-25pc.png' width=50%>
 <img src='./topological_analysis/avg_acc_per_pos-ressize_20-d_3-r_4-25pc.png' width=50%>
 <img src='./topological_analysis/avg_acc_per_pos-ressize_20-d_4-r_4-25pc.png' width=50%>
+<img src='./topological_analysis/avg_acc_per_pos-ressize_20-d_3-r_3-25pc.png' width=50%> -->
+
+
+Here below we see the top neurons by mean performance
+
+<img src='./topological_analysis/top_perf_x_pos-mean.png'>
