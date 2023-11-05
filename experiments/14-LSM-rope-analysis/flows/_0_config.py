@@ -44,8 +44,9 @@ assert ROOT.name == 'research-snn-vs-ann-in-rl'
 assert EXP_DIR.name == '14-LSM-rope-analysis'
 
 DTYPE = torch.float
-DEVICE = torch.device("cuda") \
-    if torch.cuda.is_available() else torch.device("cpu")
+DEVICE = "cpu"
+# torch.device("cuda") \
+#     if torch.cuda.is_available() else torch.device("cpu")
 
 # %%
 
@@ -80,10 +81,10 @@ sns.set_style('whitegrid')  # background style
 sns.set_context(
     rc={
         "font.size": 10,  # dict to override the context
-        "axes.titlesize": 22,
-        "axes.labelsize": 20,
-        "xtick.labelsize": 16,
-        "ytick.labelsize": 16,
+        # "axes.titlesize": 22,
+        # "axes.labelsize": 20,
+        # "xtick.labelsize": 16,
+        # "ytick.labelsize": 16,
     }
 )
 
