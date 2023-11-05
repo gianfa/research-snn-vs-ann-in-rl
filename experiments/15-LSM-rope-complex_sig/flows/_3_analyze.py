@@ -24,8 +24,7 @@ from experimentkit_in.logger_config import setup_logger
 def plot_adjacency_map(
         adj: torch.tensor,
         colour_diagonal: float = None,
-        ax=None,
-        **args) -> plt.Axes:
+        ax=None, **args) -> plt.Axes:
     if ax is None:
         _, ax = plt.subplots()
     fig = ax.figure
@@ -91,9 +90,13 @@ trials = [
     '15-trial-r3-d1',
     '15-trial-r3-d2',
     '15-trial-r3-d3',
+    '15-trial-r2-d2',
+    '15-trial-r2-d1',
+    '15-trial-r1-d1',
 ]
 
 OUTPUT_DIR = EXP_REPORT_DIR/"topological_analysis"
+expected_run_n = 100
 
 if not OUTPUT_DIR.exists():
     os.mkdir(OUTPUT_DIR)
@@ -110,6 +113,8 @@ for i, RUN_PREFIX in enumerate(trials):
 
     RUN_DIR = EXP_DATA_DIR/'experiments'/RUN_PREFIX
     subrun_paths = [run_i for run_i in RUN_DIR.iterdir() if run_i.is_dir()]
+    assert (len(subrun_paths) == expected_run_n,
+        f"{len(subrun_paths)} runs found, expected {expected_run_n}")
 
     exp_params = ek.funx.load_yaml(subrun_paths[0]/"params.yaml")
     degree = exp_params['LIF_LIF_connections']['degree']

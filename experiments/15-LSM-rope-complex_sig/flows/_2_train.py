@@ -65,7 +65,7 @@ from experimentkit_in.logger_config import setup_logger
 # %% Project Parameters
 
 
-RUN_PREFIX = f'15-trial-r2-d2'
+RUN_PREFIX = f'15-trial-r2-d1'
 
 exp_outdata_dir = EXP_DATA_DIR/'experiments'
 data_path = EXP_DATA_DIR/"2-2freq_toy_ds-20000-1.pkl"
