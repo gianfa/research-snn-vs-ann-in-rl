@@ -51,6 +51,7 @@ def connections_to_digraph(
     colour_groups: dict = {},
     show: bool = True,
     relabel = False,
+    axis_on = False,
     ax: plt.Axes = None
 ) -> nx.MultiDiGraph:
     # TODO: fix position of the neurons
@@ -79,7 +80,12 @@ def connections_to_digraph(
         nx.draw(
             G, pos, with_labels=True, ax=ax,
             node_color=[colors.get(node, 'blue') for node in G.nodes()],
-                font_color='white')
+            font_color='white',
+            font_size=8,
+            edgecolors='black',
+            node_size=30)
+        if axis_on:
+            ax.axis('on')
         return G, ax
     return G
 
@@ -111,13 +117,15 @@ if not OUTPUT_DIR.exists():
 
 fig_pos_perf, axs_pos_perf = plt.subplots(4, 4)
 fig_pos_perf_top, axs_pos_perf_top = plt.subplots(4, 4)
+fig_top_graph, axs_top_graph = plt.subplots(4, 4)
 
 for i, RUN_PREFIX in enumerate(trials):
     # data_path = EXP_DATA_DIR/"2freq_toy_ds-20000-sr_50-n_29.pkl"
 
     RUN_DIR = EXP_DATA_DIR/'experiments'/RUN_PREFIX
     subrun_paths = [run_i for run_i in RUN_DIR.iterdir() if run_i.is_dir()]
-    assert len(subrun_paths) == expected_run_n
+    assert (len(subrun_paths) == expected_run_n,
+        f"{len(subrun_paths)} runs found, expected {expected_run_n}")
 
     exp_params = ek.funx.load_yaml(subrun_paths[0]/"params.yaml")
     degree = exp_params['LIF_LIF_connections']['degree']
@@ -172,7 +180,8 @@ for i, RUN_PREFIX in enumerate(trials):
         title=f'Top {TOP_N} per row', ax=axs_pos_perf_top[radius-1, degree-1])
 
 
-    connections_to_digraph(top_neurons)
+    connections_to_digraph(
+        top_neurons, ax=axs_top_graph[radius-1, degree-1], axis_on=True)
 
     #
 
@@ -183,18 +192,22 @@ axs_to_turn_off = [[0,1], [0,2], [0,3], [1,2], [1,3], [2,3]]
 for ax_i, ax_j in axs_to_turn_off:
     axs_pos_perf[ax_i, ax_j].axis('off')
     axs_pos_perf_top[ax_i, ax_j].axis('off')
+    axs_top_graph[ax_i, ax_j].axis('off')
 
-fig_pos_perf.suptitle("Mean-performance per neuron-neuron connection.png")
+fig_pos_perf.suptitle("Mean-performance per neuron-neuron connection")
 fig_pos_perf.tight_layout()
 fig_pos_perf.savefig(OUTPUT_DIR/f"perf_x_pos-mean.png")
 fig_pos_perf
 
-fig_pos_perf_top.suptitle("Top connections by mean-performance.png")
+fig_pos_perf_top.suptitle("Top connections by mean-performance")
 fig_pos_perf_top.tight_layout()
 fig_pos_perf_top.savefig(OUTPUT_DIR/f"top_perf_x_pos-mean.png")
 fig_pos_perf_top
 
-
+fig_top_graph.suptitle("Top connections by mean-performance, graph")
+fig_top_graph.tight_layout()
+fig_top_graph.savefig(OUTPUT_DIR/f"top_perf_graph.png")
+fig_top_graph
 
 # %%
 
