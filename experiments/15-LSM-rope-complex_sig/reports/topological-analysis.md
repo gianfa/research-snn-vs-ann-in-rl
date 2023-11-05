@@ -77,3 +77,7 @@ Below we see a representation of the average performance obtained by connection 
 Here below we see the top neurons by mean performance
 
 <img src='./topological_analysis/top_perf_x_pos-mean.png'>
+
+## Back to LSM Topological Analysis
+
+[LSM-topological_analysis](./../../../docs/LSM-topological_analysis.md)
