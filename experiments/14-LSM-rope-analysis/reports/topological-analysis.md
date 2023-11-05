@@ -78,7 +78,9 @@ Here below we see the top neurons by mean performance
 
 <img src='./topological_analysis/top_perf_x_pos-mean.png'>
 
+Below we see a graph rapresentation of the top neuron positions
 
+<img src='./topological_analysis/top_perf_graph.png'>
 
 ## Back to LSM Topological Analysis
 
