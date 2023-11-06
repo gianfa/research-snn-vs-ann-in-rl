@@ -14,7 +14,7 @@ import yaml
 
 from experimentkit_in.logger_config import setup_logger
 
-ROOT = Path('/Users/giana/Desktop/Github/Projects/research-snn-vs-ann-in-rl')
+ROOT = Path('/home/gianfrancesco/github/research-snn-vs-ann-in-rl')
 DATA_DIR = ROOT/'data'
 EXP_DIR = ROOT/'experiments/08-ESN-STDP-MLops'
 EXP_DATA_DIR = EXP_DIR/'data'
@@ -43,3 +43,6 @@ def argparse_config():
 
     params = load_yaml(fpath=args.config)
     return params
+
+
+# ./experiments/08-ESN-STDP-MLops/flows/01-Forecast-Lorenz-perf_wrt_params.py
