@@ -124,8 +124,9 @@ for i, RUN_PREFIX in enumerate(trials):
 
     RUN_DIR = EXP_DATA_DIR/'experiments'/RUN_PREFIX
     subrun_paths = [run_i for run_i in RUN_DIR.iterdir() if run_i.is_dir()]
-    assert (len(subrun_paths) == expected_run_n,
-        f"{len(subrun_paths)} runs found, expected {expected_run_n}")
+    assert len(subrun_paths) == expected_run_n, \
+        f"{len(subrun_paths)} runs found for '{RUN_PREFIX}'," \
+        + f"expected {expected_run_n}"
 
     exp_params = ek.funx.load_yaml(subrun_paths[0]/"params.yaml")
     degree = exp_params['LIF_LIF_connections']['degree']
