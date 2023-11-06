@@ -1,5 +1,20 @@
 # Topological Analysis
 
+## Contents
+- [Contents](#contents)
+  - [The Signal](#the-signal)
+- [The Network](#the-network)
+  - [The Reservoir](#the-reservoir)
+  - [The Readout](#the-readout)
+- [The Training](#the-training)
+  - [The Loss Computation](#the-loss-computation)
+- [Experiment](#experiment)
+- [Visualization](#visualization)
+  - [Top n connections by performance](#top-n-connections-by-performance)
+    - [Graph of the Top n connections by performance](#graph-of-the-top-n-connections-by-performance)
+  - [Mean performance by shift wrt diagonal](#mean-performance-by-shift-wrt-diagonal)
+- [Back to LSM Topological Analysis](#back-to-lsm-topological-analysis)
+
 ### The Signal
 The signal on which the network was trained consists of a constant baseline and alternating fragments whose frequency can be one of two possible
 
@@ -73,14 +88,26 @@ Below we see a representation of the average performance obtained by connection 
 <img src='./topological_analysis/avg_acc_per_pos-ressize_20-d_4-r_4-25pc.png' width=50%>
 <img src='./topological_analysis/avg_acc_per_pos-ressize_20-d_3-r_3-25pc.png' width=50%> -->
 
+### Top n connections by performance
 
-Here below we see the top neurons by mean performance
+Here below we see the top connections by mean performance
 
 <img src='./topological_analysis/top_perf_x_pos-mean.png'>
+
+#### Graph of the Top n connections by performance
 
 Below we see a graph rapresentation of the top neuron positions
 
 <img src='./topological_analysis/top_perf_graph.png'>
+
+### Mean performance by shift wrt diagonal
+
+<img src='./topological_analysis/shift-perf_x_pos-mean.png'>
+
+<img src='./topological_analysis/shift-top_perf_graph.png'>
+
+<img src='./topological_analysis/shift-top_perf_x_pos-mean.png'>
+
 
 ## Back to LSM Topological Analysis
 
