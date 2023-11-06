@@ -95,6 +95,8 @@ grid = {
 
 grid_tuples = list(itertools.product(*grid.values()))
 print(f"INFO: {len(grid_tuples)} tuples in grid")
+
+# %%
 with Live(save_dvc_exp=True) as live:
     grid_names = list(grid.keys())
     for exp_i, exp_pi in enumerate(grid_tuples):
@@ -105,6 +107,8 @@ with Live(save_dvc_exp=True) as live:
         exp_dir = SUBEXP_RESULTS_DIR/exp_name
         if not os.path.isdir(exp_dir):
             os.mkdir(exp_dir)
+        else:
+            continue
 
         # update params
         params['data']['example_len'] = exp_dict['example_len']
