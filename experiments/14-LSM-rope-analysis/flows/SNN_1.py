@@ -52,22 +52,17 @@ from torchvision import datasets, transforms
 sys.path += ['../', '../../../']
 from _0_config import *
 
-from src_14 import funx, synapse, topologies, visualization
-
-from experimentkit_in.funx import (generate_random_name, load_yaml,
-                                   pickle_load, pickle_save_dict,
-                                   yaml_save_dict)
 from experimentkit_in.logger_config import setup_logger
 
 # %% Project Parameters
 
 
-RUN_PREFIX = f'trial1'
+RUN_PREFIX = f'trial3-overall'
 data_path = EXP_DATA_DIR/"2freq_toy_ds-20000-sr_50-n_29.pkl"
 
 # %% Project setup
 
-run_name = RUN_PREFIX + "/" + generate_random_name()
+run_name = RUN_PREFIX + "/" + ek.funx.generate_random_name()
 RUN_REPORT_DIR = EXP_REPORT_DIR/run_name
 
 if not RUN_REPORT_DIR.exists():
@@ -79,19 +74,17 @@ logger = setup_logger(
 # %% Dataset loading
 
 if data_path.exists():
-    I_y = pickle_load(data_path)
+    I_y = ek.funx.pickle_load(data_path)
     I, y = I_y['I'], I_y['y']
     data, targets = I, y
 else:
     from _1_gen_input import I, y
     time.sleep(1.5)
     data, targets = I, y
-    pickle_save_dict(data_path, {'I': I, 'y': y})
+    ek.funx.pickle_save_dict(data_path, {'I': I, 'y': y})
 
-
-
-params = load_yaml(EXP_DIR/"flows/params.yaml")
-yaml_save_dict(RUN_REPORT_DIR/"params.pkl", params)
+params = ek.funx.load_yaml(EXP_DIR/"flows/params.yaml")
+ek.funx.yaml_save_dict(RUN_REPORT_DIR/"params.yaml", params)
 
 # %% Data Preparation
 
@@ -150,11 +143,11 @@ conn_lif_lif_gain = params['LIF_LIF_connections']['gain']
 # conn_lif_lif = torch.normal(
 # 0, 1, size=(reservoir_size, reservoir_size)) * conn_lif_lif_gain
 
-# conn_lif_lif = topologies.gen_by_connection_degree(
+# conn_lif_lif = src_14.topologies.gen_by_connection_degree(
 #     reservoir_size, reservoir_size, degree=2)
 
 # topology: positions
-conn_lif_lif_topology = topologies.gen_rope(
+conn_lif_lif_topology = src_14.topologies.gen_rope(
     reservoir_size, reservoir_size,
     radius=params['LIF_LIF_connections']['radius'],
     degree=params['LIF_LIF_connections']['degree'])
@@ -175,6 +168,10 @@ conn_lif_lif = conn_lif_lif_topology * conn_lif_lif_gain
 assert conn_lif_lif.diag().sum() == 0
 
 # conn_lif_lif = torch.ones(reservoir_size, reservoir_size) * 0.05
+
+ek.funx.pickle_save_dict(
+    RUN_REPORT_DIR/"reservoir_topology.pkl",
+    {'conn_lif_lif': conn_lif_lif})
 
 lif1_has_autapsys = False
 lif1_sparsity = 0
@@ -217,7 +214,7 @@ lif1 = snn.Leaky(
     learn_beta=params['net']['neuron_learn_beta'],
     learn_threshold=params['net']['neuron_learn_threshold'])
 fc2 = nn.Linear(len(reservoir_output), output_size)
-synapses = synapse.Synapse(
+synapses = src_14.synapse.Synapse(
     size=(reservoir_size, reservoir_size),
     initial_conductance = params['LIF_LIF_connections'][
         'syn_initial_conductance'],
@@ -257,9 +254,9 @@ loss_scope = params['training']['loss_scope']
 eval_scope = loss_scope
 
 buffer_capacity = params['training']['buffer_capacity']
-yi_pred_buffer = funx.FIFO_buffer(capacity=buffer_capacity)
-yi_pred_logits_buffer = funx.FIFO_buffer(capacity=buffer_capacity)
-yi_buffer = funx.FIFO_buffer(capacity=buffer_capacity)
+yi_pred_buffer = src_14.funx.FIFO_buffer(capacity=buffer_capacity)
+yi_pred_logits_buffer = src_14.funx.FIFO_buffer(capacity=buffer_capacity)
+yi_buffer = src_14.funx.FIFO_buffer(capacity=buffer_capacity)
 
 washout_time = params['training']['washout_time']
 
@@ -427,7 +424,7 @@ fig.savefig(fname)
 
 # %%
 
-ax = visualization.generate_raster_plot(spk_hist['filter'].squeeze().T)
+ax = src_14.visualization.generate_raster_plot(spk_hist['filter'].squeeze().T)
 ax.set_xlim(0, 2000)
 fname = RUN_REPORT_DIR/"reservoir-raster.png"
 ax.figure.savefig(fname)

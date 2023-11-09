@@ -1,4 +1,8 @@
-""" With noise injection
+""" Topological search
+
+For a given rope topology:
+    RQ1. hat is the distribution of favourite positions vs (degree, radius)?
+
 
 FC1 > LIF1 > FC2 > TanH
 
@@ -39,6 +43,13 @@ Notes
 - TUNING| loss_scope ~ 12 * subsig_len
 - TUNING| normal distribution of decay rates seems to act as a stabilizer sometimes
 
+TODO:
+- research on topology
+    - (save topology)
+    - plot cell vs probab to high accuracy
+
+sampling on same degre, radius, varying translation along k
+
 References
 ----------
 https://colab.research.google.com/github/jeshraghian/snntorch/blob/master/examples/tutorial_5_FCN.ipynb
@@ -46,70 +57,61 @@ https://colab.research.google.com/github/jeshraghian/snntorch/blob/master/exampl
 # %%
 import sys
 
-import wandb
-
 sys.path += ['../', '../../../']
 from _0_config import *
 
-# from src_14 import funx, synapse, topologies, visualization
-# from experimentkit_in.logger_config import setup_logger
-import matplotlib
-matplotlib.use('agg')
-
-wandb.login()
+from experimentkit_in.logger_config import setup_logger
 
 # %% Project Parameters
 
 
-RUN_PREFIX = f'trial3-overall'
-data_path = EXP_DATA_DIR/"2freq_toy_ds-20000-sr_50-n_29.pkl"
+RUN_PREFIX = f'15-trial-r2-d1'
 
-# %% Project setup
+exp_outdata_dir = EXP_DATA_DIR/'experiments'
+data_path = EXP_DATA_DIR/"2-2freq_toy_ds-20000-1.pkl"
+description = "Performance Sampling vs radius and degree"
 
-run_name = RUN_PREFIX + "/" + ek.funx.generate_random_name()
-RUN_REPORT_DIR = EXP_REPORT_DIR/run_name
+n_samples = 100
 
-if not RUN_REPORT_DIR.exists():
-    os.makedirs(RUN_REPORT_DIR)
+for sample_i in range(n_samples):
+    # Project setup
 
-logger = setup_logger(
-    logger_name=RUN_PREFIX, log_file=RUN_REPORT_DIR/"log.log")
+    run_name = RUN_PREFIX + "/" + ek.funx.generate_random_name()
+    RUN_REPORT_DIR = exp_outdata_dir/run_name
 
-# %% Dataset loading
+    if not RUN_REPORT_DIR.exists():
+        os.makedirs(RUN_REPORT_DIR)
 
-if data_path.exists():
-    I_y = ek.funx.pickle_load(data_path)
-    I, y = I_y['I'], I_y['y']
-    data, targets = I, y
-else:
-    from _1_gen_input import I, y
-    time.sleep(1.5)
-    data, targets = I, y
-    ek.funx.pickle_save_dict(data_path, {'I': I, 'y': y})
+    logger = setup_logger(
+        logger_name=RUN_PREFIX, log_file=RUN_REPORT_DIR/"log.log")
 
+    # Dataset loading
 
+    if data_path.exists():
+        I_y = ek.funx.pickle_load(data_path)
+        I, y = I_y['I'], I_y['y']
+        data, targets = I, y
+    else:
+        from _1_gen_input import I, y
+        time.sleep(1.5)
+        data, targets = I, y
+        ek.funx.pickle_save_dict(data_path, {'I': I, 'y': y})
 
-params = ek.funx.load_yaml(EXP_DIR/"flows/sweep_config.yaml")
-ek.funx.yaml_save_dict(RUN_REPORT_DIR/"params.pkl", params)
+    params = ek.funx.load_yaml(EXP_DIR/"flows/params.yaml")
+    ek.funx.yaml_save_dict(RUN_REPORT_DIR/"params.yaml", params)
 
-# %% Data Preparation
+    # Data Preparation
 
-data = data.to(DEVICE).reshape(1, len(data))
-targets = targets.to(DEVICE)
-num_classes = 3
-targets = torch.nn.functional.one_hot(targets.to(int), num_classes=num_classes)
-# targets = y
+    data = data.to(DEVICE).reshape(1, len(data))
+    targets = targets.to(DEVICE)
+    num_classes = 3
+    targets = torch.nn.functional.one_hot(targets.to(int), num_classes=num_classes)
+    # targets = y
 
+    # Input definition
 
-
-
-def wandb_main():
-    wandb.init(project=f'{EXP_DIR.name}|{RUN_PREFIX}', entity='gianfa')
-    config = wandb.config
-    # %% Input definition
-
-    base_input_current_type = config['base_input_current_type']
-    base_input_current_gain = config['base_input_current_gain']
+    base_input_current_type = params['net']['base_input_current_type']
+    base_input_current_gain = params['net']['base_input_current_gain']
     if base_input_current_type == 'constant':
         base_input = torch.ones_like(data) * base_input_current_gain
     elif base_input_current_type == 'noisy':
@@ -117,15 +119,15 @@ def wandb_main():
     else:
         raise ValueError("unknown base_input_current_type")
 
-    # %%  --- Network Parameters ---
+    #  --- Network Parameters ---
     bs = 1
 
-    input_size = 1
-    reservoir_size = config['net_reservoir_size']
-    output_size = 3
+    input_size = params['net']['input_size']
+    reservoir_size = params['net']['reservoir_size']
+    output_size = params['net']['output_size']
 
     # selected subset input/output
-    reservoir_output_n = config['ro_lif_output_n']
+    reservoir_output_n = params['readout_LIF_connections']['reservoir_output_n']
     reservoir_output = (
         torch.arange(reservoir_size).flip(dims=(0,))[:reservoir_output_n])
 
@@ -137,9 +139,9 @@ def wandb_main():
     # ---- Conn I-LIF ---
 
     # the value of the non-zero LIF-I connections
-    conn_lif_I_gain = config['lif_i_gain']
+    conn_lif_I_gain = params['LIF_I_connections']['gain']
     # n of reservoir neurons to feed by I
-    reservoir_fed_neurons_n = config['lif_i_input_n']
+    reservoir_fed_neurons_n = params['LIF_I_connections']['input_to_reservoir']
 
     conn_lif_I = torch.zeros(input_size, reservoir_size)
     reservoir_fed_neurons = \
@@ -147,25 +149,25 @@ def wandb_main():
         # torch.randperm(reservoir_size)[:reservoir_fed_neurons_n]
     conn_lif_I[0, reservoir_fed_neurons] = conn_lif_I_gain
 
-    # %% ---- Conn LIF-LIF ---
+    # ---- Conn LIF-LIF ---
 
-    enable_dyn_synapses = config['enable_dyn_synapses']
-    conn_lif_lif_gain = config['lif_lif_gain']
+    enable_dyn_synapses = params['LIF_LIF_connections']['enable_dyn_synapses']
+    conn_lif_lif_gain = params['LIF_LIF_connections']['gain']
 
     # conn_lif_lif = torch.normal(
     # 0, 1, size=(reservoir_size, reservoir_size)) * conn_lif_lif_gain
 
-    # conn_lif_lif = src_14.topologies.gen_by_connection_degree(
+    # conn_lif_lif = src_15.topologies.gen_by_connection_degree(
     #     reservoir_size, reservoir_size, degree=2)
 
     # topology: positions
-    conn_lif_lif_topology = src_14.topologies.gen_rope(
+    conn_lif_lif_topology = src_15.topologies.gen_rope(
         reservoir_size, reservoir_size,
-        radius=int(config['radius']),
-        degree=int(config['degree']))
+        radius=params['LIF_LIF_connections']['radius'],
+        degree=params['LIF_LIF_connections']['degree'])
 
     # topology: weights
-    conn_lif_lif_weigths_dist = config['lif_lif_weights_dist']
+    conn_lif_lif_weigths_dist = params['LIF_LIF_connections']['weigths_dist']
 
     if conn_lif_lif_weigths_dist == 'constant':
         conn_lif_lif_topology = conn_lif_lif_topology
@@ -205,11 +207,11 @@ def wandb_main():
             len(lif1_dense_idxs))[:int(reservoir_size**2 * lif1_sparsity)]]
         conn_lif_lif[lif1_tooff_idxs[:, 0], lif1_tooff_idxs[:, 1]] = 0
 
-    # %%
+    #
 
     decay_rate: torch.Tensor
-    syn_decay_rate = config['syn_decay_rate']
-    syn_decay_rate_dist = config['syn_decay_rate_dist']
+    syn_decay_rate = params['LIF_LIF_connections']['syn_decay_rate']
+    syn_decay_rate_dist = params['LIF_LIF_connections']['syn_decay_rate_dist']
     if syn_decay_rate_dist == 'constant':
         decay_rate = syn_decay_rate
     if syn_decay_rate_dist == 'uniform':
@@ -223,12 +225,12 @@ def wandb_main():
     lif1 = snn.Leaky(
         beta=beta,
         reset_mechanism="zero",
-        learn_beta=config['neuron_learn_beta'],
-        learn_threshold=config['neuron_learn_threshold'])
+        learn_beta=params['net']['neuron_learn_beta'],
+        learn_threshold=params['net']['neuron_learn_threshold'])
     fc2 = nn.Linear(len(reservoir_output), output_size)
-    synapses = src_14.synapse.Synapse(
+    synapses = src_15.synapse.Synapse(
         size=(reservoir_size, reservoir_size),
-        initial_conductance = config[
+        initial_conductance = params['LIF_LIF_connections'][
             'syn_initial_conductance'],
         decay_rate = decay_rate
     )
@@ -240,9 +242,9 @@ def wandb_main():
     # --- LOSS/OPTIM ---
 
     loss_fn = nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(fc2.parameters(), lr=config['optim_lr'])
+    optimizer = torch.optim.Adam(fc2.parameters(), lr=params['optim']['lr'])
 
-    # %% --- HIST ---
+    # --- HIST ---
 
     losses = []
     mem_hist = {
@@ -259,18 +261,18 @@ def wandb_main():
     acc_hist = []
     cur_lif_lif_hist = []
 
-    # %%  --- TRAIN ---
+    #  --- TRAIN ---
 
-    epochs = config['training_epochs']
-    loss_scope = config['training_loss_scope']
+    epochs = params['training']['epochs']
+    loss_scope = params['training']['loss_scope']
     eval_scope = loss_scope
 
-    buffer_capacity = config['training_buffer_capacity']
-    yi_pred_buffer = ek.collections.FIFO_buffer(capacity=buffer_capacity)
-    yi_pred_logits_buffer = ek.collections.FIFO_buffer(capacity=buffer_capacity)
-    yi_buffer = ek.collections.FIFO_buffer(capacity=buffer_capacity)
+    buffer_capacity = params['training']['buffer_capacity']
+    yi_pred_buffer = src_15.funx.FIFO_buffer(capacity=buffer_capacity)
+    yi_pred_logits_buffer = src_15.funx.FIFO_buffer(capacity=buffer_capacity)
+    yi_buffer = src_15.funx.FIFO_buffer(capacity=buffer_capacity)
 
-    washout_time = config['training_washout_time']
+    washout_time = params['training']['washout_time']
 
     for epoch in range(epochs):
         for i, xi_yi in enumerate(zip(data.t(), targets)):
@@ -319,7 +321,6 @@ def wandb_main():
                         torch.stack(yi_pred_logits_buffer.buffer_).squeeze(),
                         torch.stack(yi_buffer.buffer_)
                             .squeeze().argmax(dim=1).to(torch.long))
-                    wandb.log({"loss_val": loss_val})
 
                     optimizer.zero_grad()
                     loss_val.backward()
@@ -334,7 +335,6 @@ def wandb_main():
                             == torch.stack(yi_buffer.buffer_)
                         .argmax(dim=2).squeeze()).mean(dtype=float)
                     acc_hist.append(acc.item())
-                    wandb.log({"acc": acc})
 
                 # -- store hist --
                 conn_readout_lif.append(
@@ -346,53 +346,48 @@ def wandb_main():
                 spk_hist['filter'].append(spk1.clone().detach())
                 mem_hist['readout'].append(out.clone().detach())
 
-        # %%
-        conn_readout_lif = {
-            'weight': torch.stack([p['weight'] for p in conn_readout_lif]).detach(),
-            'bias': torch.stack([p['bias'] for p in conn_readout_lif]).detach()
-            }
-        losses = torch.stack(losses)
-        cur_lif_lif_hist = torch.stack(cur_lif_lif_hist)
-        mem_hist['filter'] = torch.stack(mem_hist['filter'])
-        mem_hist['readout'] = torch.stack(mem_hist['readout'])  # [=] (neuron_id, n_batches, bs, hidden_size)
-        spk_hist['filter'] = torch.stack(spk_hist['filter'])
-        spk_hist['readout'] = torch.stack(spk_hist['readout'])
-        acc_hist = torch.tensor(acc_hist)
+    #
+    conn_readout_lif = {
+        'weight': torch.stack([p['weight'] for p in conn_readout_lif]).detach(),
+        'bias': torch.stack([p['bias'] for p in conn_readout_lif]).detach()
+        }
+    losses = torch.stack(losses)
+    cur_lif_lif_hist = torch.stack(cur_lif_lif_hist)
+    mem_hist['filter'] = torch.stack(mem_hist['filter'])
+    mem_hist['readout'] = torch.stack(mem_hist['readout'])  # [=] (neuron_id, n_batches, bs, hidden_size)
+    spk_hist['filter'] = torch.stack(spk_hist['filter'])
+    spk_hist['readout'] = torch.stack(spk_hist['readout'])
+    acc_hist = torch.tensor(acc_hist)
 
-        fig, ax = plt.subplots()
-        ax.plot(losses)
-        ax.set_title('Loss')
-        ax.set_xlabel(f't/{loss_scope}')
+    fig, ax = plt.subplots()
+    ax.plot(losses)
+    ax.set_title('Loss')
+    ax.set_xlabel(f't/{loss_scope}')
 
-        fname = RUN_REPORT_DIR/"loss.png"
-        fig.savefig(fname)
+    fname = RUN_REPORT_DIR/"loss.png"
+    fig.savefig(fname)
 
 
-        fig, ax = plt.subplots()
-        ax.plot(conn_readout_lif['weight'][:, 0, 0])
-        ax.set_title('conn_readout_lif - 0,0')
-        fname = RUN_REPORT_DIR/"conn_readout_lif-0_0.png"
-        fig.savefig(fname)
+    fig, ax = plt.subplots()
+    ax.plot(conn_readout_lif['weight'][:, 0, 0])
+    ax.set_title('conn_readout_lif - 0,0')
+    fname = RUN_REPORT_DIR/"conn_readout_lif-0_0.png"
+    fig.savefig(fname)
 
-        fig, ax = plt.subplots()
-        ax.plot(acc_hist)
-        acc_mean = acc_hist.mean()
-        acc_last_mean = acc_hist[-int(len(acc_hist)*.1):].mean()
-        loss_last_mean = losses[-int(len(losses)*.1):].mean()
-        ax.set_title(f"Accuracy| mean: {acc_mean:.2f}, last 10% mean: {acc_last_mean:.2f}")
-        ax.set_xlabel("iteration/dw")
-        fname = RUN_REPORT_DIR/"accuracy.png"
-        fig.savefig(fname)
+    fig, ax = plt.subplots()
+    ax.plot(acc_hist)
+    acc_mean = acc_hist.mean()
+    acc_last_mean = acc_hist[-int(len(acc_hist)*.1):].mean()
+    ax.set_title(f"Accuracy| mean: {acc_mean:.2f}, last 10% mean: {acc_last_mean:.2f}")
+    ax.set_xlabel("iteration/dw")
+    fname = RUN_REPORT_DIR/"accuracy.png"
+    fig.savefig(fname)
 
-        loss_last_mean = losses[-int(len(losses)*.1):].mean()
+    ek.funx.pickle_save_dict(
+        RUN_REPORT_DIR/"results.pkl",
+        {'acc_last_mean': acc_last_mean})
 
-        wandb.log({
-            "acc_mean": acc_mean,
-            "acc_last_mean": acc_last_mean,
-            "loss_last_mean": loss_last_mean
-        })
-
-    #%% Visualization
+    # Visualization
 
     from matplotlib.ticker import MaxNLocator
 
@@ -430,7 +425,7 @@ def wandb_main():
     fig.savefig(fname)
 
 
-    # %% LIF-LIF Connections Matrix, heatmap
+    # LIF-LIF Connections Matrix, heatmap
 
     import seaborn as sns
 
@@ -445,21 +440,15 @@ def wandb_main():
     fname = RUN_REPORT_DIR/"reservoir-conn_matrix.png"
     fig.savefig(fname)
 
-    # %%
+    #
 
-    ax = src_14.visualization.generate_raster_plot(spk_hist['filter'].squeeze().T)
+    ax = src_15.visualization.generate_raster_plot(spk_hist['filter'].squeeze().T)
     ax.set_xlim(0, 2000)
     fname = RUN_REPORT_DIR/"reservoir-raster.png"
     ax.figure.savefig(fname)
 
-    # %%
+# %%
 
-    print(f"'{RUN_REPORT_DIR}' done")
+print(f"'{RUN_REPORT_DIR}' done")
 
-
-
-sweep_id = wandb.sweep(
-    sweep=params, project=f'{EXP_DIR.name}|{RUN_PREFIX}')
-
-wandb.agent(sweep_id, function=wandb_main)
 # %%

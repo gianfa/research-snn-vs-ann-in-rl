@@ -30,7 +30,7 @@ sys.path += ['../', '../../../']
 
 import experimentkit_in as ek
 from experimentkit_in.logger_config import setup_logger
-import src_14
+import src_15
 
 # %% Parameters
 
@@ -41,7 +41,7 @@ EXP_REPORT_DIR = EXP_DIR/"reports"
 RANDOMSEED = 42
 
 assert ROOT.name == 'research-snn-vs-ann-in-rl'
-assert EXP_DIR.name == '14-LSM-rope-analysis'
+assert EXP_DIR.name == '15-LSM-rope-complex_sig'
 
 DTYPE = torch.float
 DEVICE = "cpu"

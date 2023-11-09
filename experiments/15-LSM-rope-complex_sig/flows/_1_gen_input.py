@@ -19,7 +19,7 @@ error_scope = 30  # n of steps to average over, in order to compute the error
 # %% Gen signal with random artifacts
 import sys
 
-sys.path += ['../../../', '../../11-LSTM/']
+sys.path += ['../../../']
 
 from experimentkit_in.funx import pickle_load, pickle_save_dict
 from experimentkit_in.generators.time_series import (add_artifacts_to_signal,
@@ -36,40 +36,56 @@ sampling_rate = 50
 main_signal = torch.zeros(signal_length * sampling_rate)
 num_signals = 29
 
-categ_1_max_length = 5
-categ_1_signals = gen_random_artifacts(
+basis_1_max_length = 5
+basis_1_signals = gen_random_artifacts(
     num_signals = num_signals,
-    min_length = categ_1_max_length,
-    max_length = categ_1_max_length,
+    min_length = basis_1_max_length,
+    max_length = basis_1_max_length,
     min_frequency = 5,
     max_frequency = 5,
     amplitude=1,
     sampling_rate=sampling_rate)
 """List(np.array): List of signals"""
 
-categ_2_max_length = 5
-categ_2_signals = gen_random_artifacts(
+basis_2_max_length = 5
+basis_2_signals = gen_random_artifacts(
     num_signals = num_signals,
-    min_length = categ_2_max_length,
-    max_length = categ_2_max_length,
+    min_length = basis_2_max_length,
+    max_length = basis_2_max_length,
     min_frequency = 10,
     max_frequency = 10,
     amplitude=1,
     sampling_rate=sampling_rate)
 """List(np.array): List of signals"""
 
-max_idx = signal_length - max(categ_1_max_length, categ_2_max_length) - 1
+basis_3_max_length = 5
+basis_3_signals = gen_random_artifacts(
+    num_signals = num_signals,
+    min_length = basis_3_max_length,
+    max_length = basis_3_max_length,
+    min_frequency = 30,
+    max_frequency = 30,
+    amplitude=1,
+    sampling_rate=sampling_rate)
+"""List(np.array): List of signals"""
 
-categ_1_idxs = []
-categ_2_idxs = []
+# %%
+
+max_idx = signal_length - max(
+    basis_1_max_length, basis_2_max_length, basis_3_max_length) - 1
+
+sig_1_idxs = []
+sig_2_idxs = []
+
 dirty_signal = main_signal.clone()
 labels = torch.zeros_like(dirty_signal)
 min_spc = 25  # minimum intra-signals space
 pp = 0  # pointer
+
 for i in range(num_signals):
     if i > 0:
         pp += min_spc
-    cur_sig_1 = categ_1_signals[i]
+    cur_sig_1 = basis_1_signals[i] + basis_2_signals[i]
     cur_idx_start = torch.randint(pp, pp + 100, size=(1, 1)).item()
     cur_idx_end = cur_idx_start + len(cur_sig_1)
     
@@ -78,11 +94,11 @@ for i in range(num_signals):
         break
     dirty_signal[cur_idx_start:cur_idx_end] += cur_sig_1
     pp = cur_idx_end
-    categ_1_idxs.append((cur_idx_start, cur_idx_end))
+    sig_1_idxs.append((cur_idx_start, cur_idx_end))
     labels[cur_idx_start:cur_idx_end] = 1
 
     pp += min_spc
-    cur_sig_2 = categ_2_signals[i] 
+    cur_sig_2 = basis_2_signals[i] + basis_3_signals[i]
     cur_idx_start = torch.randint(pp, pp + 100, size=(1, 1)).item()
     cur_idx_end = cur_idx_start + len(cur_sig_2)
 
@@ -91,7 +107,7 @@ for i in range(num_signals):
         break
     dirty_signal[cur_idx_start:cur_idx_end] += cur_sig_2
     pp = cur_idx_end
-    categ_2_idxs.append((cur_idx_start, cur_idx_end))
+    sig_2_idxs.append((cur_idx_start, cur_idx_end))
     labels[cur_idx_start:cur_idx_end] = 2
 
 
@@ -105,14 +121,14 @@ axs[0].plot(main_signal)
 axs[0].set_title("Baseline")
 axs[1].plot(dirty_signal, label='dirty signal')
 for i in range(num_signals):
-    idx_from = categ_1_idxs[i][0]
-    idx_to = categ_1_idxs[i][1]
+    idx_from = sig_1_idxs[i][0]
+    idx_to = sig_1_idxs[i][1]
     axs[1].plot(
         torch.arange(idx_from, idx_to),
         dirty_signal[idx_from:idx_to], c='k')
 for i in range(num_signals):
-    idx_from = categ_2_idxs[i][0]
-    idx_to = categ_2_idxs[i][1]
+    idx_from = sig_2_idxs[i][0]
+    idx_to = sig_2_idxs[i][1]
     axs[1].plot(
         torch.arange(idx_from, idx_to),
         dirty_signal[idx_from:idx_to], c='orange')
