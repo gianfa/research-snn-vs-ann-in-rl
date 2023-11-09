@@ -1,5 +1,6 @@
 wandb
 .conda*
+!*/data/2freq_toy_ds-20000-sr_50-n_29.pkl
 # github repos
 *gh-*
 *-hidden*
