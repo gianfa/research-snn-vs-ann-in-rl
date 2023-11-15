@@ -49,6 +49,16 @@ At each training step the network receives a signal element.
 The network subsequently completes an entire propagation step between the layers until a prediction is reached.  
 A buffer of a specific size, sequentially collects a specific amount of network outputs.
 
+
+
+Given:  
+* [signal](#the-signal) $s[n] \in \mathbb{R} : \{s[0], .., s[N]\}$, a discrete time input, $T$ seconds long and with $r_s$ sampling rate;
+* $y \in F \subset \mathbb{N}$, with $F: \{0, c_1, .., c_C\}$ and $y:\{y_0, ..., y_N\}$, being a vector of integer labels, containing labels equal to 1 + $C$ categories. Where ncategories is the number of categories to be classified, excluding the baseline category, corresponding to everything that is not such categories. In our case the signal baseline.
+* a Liquid State Machine [Maas, 2002], made by a Liquid Filter (reservoir) $L$, a Readout $f$. It is supposed to learn a mapping between $s$ and $y$.
+
+
+At each time step, $n_i$, the network receives a $s[n_i]$ element which is processed in one step by the whole network, until it returns a $\hat{y}$. $\hat{y}$ 
+
 ### The Loss Computation
 At a specific step interval, $l_{scope}$ (250), the loss is calculated over the the whole buffer.
 
