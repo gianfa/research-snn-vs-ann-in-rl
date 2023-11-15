@@ -53,15 +53,43 @@ A buffer of a specific size, sequentially collects a specific amount of network 
 
 Given:  
 * [signal](#the-signal) $s[n] \in \mathbb{R} : \{s[0], .., s[N]\}$, a discrete time input, $T$ seconds long and with $r_s$ sampling rate;
-* $y \in F \subset \mathbb{N}$, with $F: \{0, c_1, .., c_C\}$ and $y:\{y_0, ..., y_N\}$, being a vector of integer labels, containing labels equal to 1 + $C$ categories. Where ncategories is the number of categories to be classified, excluding the baseline category, corresponding to everything that is not such categories. In our case the signal baseline.
-* a Liquid State Machine [Maas, 2002], made by a Liquid Filter (reservoir) $L$, a Readout $f$. It is supposed to learn a mapping between $s$ and $y$.
+* $y \in Y \subset \mathbb{N}$, with $Y: \{0, c_1, .., c_C\}$ and $y:\{y_0, ..., y_N\}$, being a vector of integer labels, containing labels equal to 1 + $C$ categories. Where ncategories is the number of categories to be classified, excluding the baseline category, corresponding to everything that is not such categories. In our case the signal baseline.
+* a [Liquid State Machine](#the-network) [Maas, 2002], made by a Liquid Filter (reservoir) $R$, a Readout $f$. It is supposed to learn a mapping between $s$ and $y$, returning a $\hat{y}_i$. We'll refer to the whole of it as a $Z$.
+* $\hat{y} \in Y$, $\hat{y}:\{\hat{y}_0, ..., \hat{y}_N\}$, vector of integer labels, returned by the LSM Readout, $f$. $\hat{y}=Z(s[n])$
 
 
-At each time step, $n_i$, the network receives a $s[n_i]$ element which is processed in one step by the whole network, until it returns a $\hat{y}$. $\hat{y}$ 
+At each time step, $n_i$, the network, $Z$, receives a $s[n_i]$ element which is processed in one step by the whole network, until it returns a $\hat{y_i}$. 
 
 ### The Loss Computation
-At a specific step interval, $l_{scope}$ (250), the loss is calculated over the the whole buffer.
+At a specific step interval, $l_{scope}$ (250), the loss is calculated over the the whole buffer. Let's see the main stages of the process.
 
+Given:
+* a $L_{scope} \in \mathbb{N}, L_{scope}<N$ , loss scope. Step interval at which the loss is computed.
+
+<!-- * a buffer $B_{y}$,  
+$$ (\forall n_i \in [0, N]):  \\
+\space\space\space\space \hat{y}_i=Z(s[n_i]) \\
+B[n_i] \leftarrow \hat{y}_i
+$$ -->
+
+$$
+\space\space\space\space L(\hat{y}[ni-L_{scope}, ni], y[ni-L_{scope}, ni]) ; \forall n_i \in L_{scope}
+$$
+
+TODO: ADD washout
+
+```
+{below, incomplete code to be continued}
+
+s: signal
+y: labels
+
+FOR each ni from 0 to s_length - 1 DO:
+  xi <- s[ni]
+  yi <- y[ni]
+  spk_prev = 
+  ...
+```
 
 ## Experiment
 After researching the most important hyperparameters,
