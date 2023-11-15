@@ -396,6 +396,8 @@ def wandb_main():
         fname = RUN_REPORT_DIR/"accuracy.png"
         fig.savefig(fname)
 
+        loss_last_mean = losses[-int(len(losses)*.1):].mean()
+
         wandb.log({
             "acc_mean": acc_mean,
             "acc_last_mean": acc_last_mean,
