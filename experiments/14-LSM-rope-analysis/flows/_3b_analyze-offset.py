@@ -1,4 +1,4 @@
-"""
+""" TOREVIEW! maybe is not analyze_dataset
 
 
 After researching the most important hyperparameters,
@@ -27,8 +27,7 @@ from experimentkit_in.logger_config import setup_logger
 def plot_adjacency_map(
         adj: torch.tensor,
         colour_diagonal: float = None,
-        ax=None,
-        **args) -> plt.Axes:
+        ax=None, **args) -> plt.Axes:
     if ax is None:
         _, ax = plt.subplots()
     fig = ax.figure
@@ -89,18 +88,15 @@ def connections_to_digraph(
         return G, ax
     return G
 
+
 def collect_from_runs(x):
-        return [run_i/x for run_i in subrun_paths if (run_i/x).exists()]
+    return [run_i/x for run_i in subrun_paths]
 
 # %% -- Project Parameters --
 
-
-trials = [
-    'trial-r4-d4-om2',
-    'trial-r4-d4-om1',
-    'trial-r4-d4-o1',
-    'trial-r4-d4-o2',
-]
+# TRIAL_NAME = '14-topol-trial1-s50-r16_-d2-quant3'
+TRIAL_NAME = '14-topol-trial4-s50-r16_-d2-quant3'
+OUTPUT_PREFIX = '14_1_s50_quant_3'
 
 OUTPUT_DIR = EXP_REPORT_DIR/"topological_analysis"
 expected_run_n = 100
@@ -111,107 +107,75 @@ if not OUTPUT_DIR.exists():
 
 # %% -- Analyze --
 
-figsize = (8, 2)
-fig_pos_perf, axs_pos_perf = plt.subplots(1, 4, figsize=figsize)
-fig_pos_perf_top, axs_pos_perf_top = plt.subplots(1, 4, figsize=figsize)
-fig_top_graph, axs_top_graph = plt.subplots(1, 4, figsize=figsize)
+# Set Paths
+RUN_PREFIX = TRIAL_NAME
+run_dir = EXP_DATA_DIR/'experiments'/RUN_PREFIX
+subrun_paths = [run_i for run_i in run_dir.iterdir() if run_i.is_dir()]
+assert (len(subrun_paths) == expected_run_n,
+    f"{len(subrun_paths)} runs found, expected {expected_run_n}")
 
-for i, RUN_PREFIX in enumerate(trials):
-    # data_path = EXP_DATA_DIR/"2freq_toy_ds-20000-sr_50-n_29.pkl"
-
-    RUN_DIR = EXP_DATA_DIR/'experiments'/RUN_PREFIX
-    subrun_paths = [run_i for run_i in RUN_DIR.iterdir() if run_i.is_dir()]
-    assert len(subrun_paths) == expected_run_n, \
-        f"{len(subrun_paths)} runs found, expected {expected_run_n}"
-
-    exp_params = ek.funx.load_yaml(subrun_paths[0]/"params.yaml")
-    degree = exp_params['LIF_LIF_connections']['degree']
-    radius = exp_params['LIF_LIF_connections']['radius']
-    offset = exp_params['LIF_LIF_connections']['offset']
+# Get Params
+exp_params = ek.funx.load_yaml(subrun_paths[0]/"params.yaml")
+degree = exp_params['LIF_LIF_connections']['degree']
+radius = exp_params['LIF_LIF_connections']['radius']
 
 
-    topol_paths = collect_from_runs('reservoir_topology.pkl')
-    topols = torch.stack([ek.funx.pickle_load(topol_path)['conn_lif_lif']
-            for topol_path in topol_paths])
 
-    acc_lastm_paths = collect_from_runs('results.pkl')
-    acc_lastms = torch.stack(
-        [ek.funx.pickle_load(acc_lastm_path)['acc_last_mean']
-            for acc_lastm_path in acc_lastm_paths])
+topol_paths = collect_from_runs('reservoir_topology.pkl')
+topols = torch.stack([ek.funx.pickle_load(topol_path)['conn_lif_lif']
+        for topol_path in topol_paths])
 
-
-    pos_perf = (acc_lastms.view(len(acc_lastms), 1, 1) * (topols!=0))
-    """ Performance of the positions
-    Each topology has the performance value in each of the cells"""
-
-    pos_perf_mean = pos_perf.mean(0)
-
-    # 
-    ri = 1 # radius -1
-    if offset < 0 :
-        ci = offset +2
-    if offset > 0:
-        ci = offset +1
-
-    ax = plot_adjacency_map(
-        pos_perf_mean,
-        title=f'r:{radius}, d:{degree}, o:{offset}',
-        ax = axs_pos_perf[ci])
-    fname = OUTPUT_DIR/f"avg_acc_per_pos-ressize_20-d_{degree}-r_{radius}.png"
-    ax.figure.savefig(fname)
-
-    pos_perf_filtered = torch.where(
-        pos_perf.mean(0) > .25, pos_perf.mean(0), 0)
-
-    ax = plot_adjacency_map(
-        pos_perf_filtered,
-        title=f'Mean final acc per position > 0.25\nr:{radius}, d:{degree}, o:{offset}')
-    fname = OUTPUT_DIR/f"avg_acc_per_pos-ressize_20-d_{degree}-r_{radius}.png"
-    ax.figure.savefig(fname)
-
-    # Top neurons per row
-    TOP_N = degree
-
-    top_neurons = torch.zeros_like(pos_perf_mean)
-    for ri in range(pos_perf_mean.shape[0]):
-        top_idxs = (torch.argsort(pos_perf_mean[ri], descending=True)[:TOP_N])
-        # remove zero-valued idxs
-        top_idxs = top_idxs[pos_perf_mean[ri][top_idxs] != 0]
-        top_neurons[ri][top_idxs] = 1
-
-    plot_adjacency_map(
-        top_neurons, colour_diagonal=0.5,
-        title=f'Top {TOP_N} per row', ax=axs_pos_perf_top[ci])
+acc_lastm_paths = collect_from_runs('results.pkl')
+acc_lastms = torch.stack(
+    [ek.funx.pickle_load(acc_lastm_path)['acc_last_mean']
+        for acc_lastm_path in acc_lastm_paths])
 
 
-    connections_to_digraph(
-        top_neurons, ax=axs_top_graph[ci], axis_on=True)
+pos_perf = (acc_lastms.view(len(acc_lastms), 1, 1) * (topols!=0))
+""" Performance of the positions
+Each topology has the performance value in each of the cells"""
 
-    #
+pos_perf_mean = pos_perf.mean(0)
 
-    print(topols.shape)
-    plot_adjacency_map(topols.mean(0)).set(title='Mean weight values')
+ax = plot_adjacency_map(
+    pos_perf_mean,
+    title=f'r:{radius}, d:{degree}')
+fname = OUTPUT_DIR/f"{OUTPUT_PREFIX}-avg_acc_per_pos-ressize_50-d_{degree}-r_{radius}.png"
+ax.figure.savefig(fname)
 
-# axs_to_turn_off = [[0,1], [0,2], [0,3], [1,2], [1,3], [2,3]]
-# for ax_i, ax_j in axs_to_turn_off:
-#     axs_pos_perf[ax_i, ax_j].axis('off')
-#     axs_pos_perf_top[ax_i, ax_j].axis('off')
-#     axs_top_graph[ax_i, ax_j].axis('off')
+pos_perf_filtered = torch.where(
+    pos_perf.mean(0) > .25, pos_perf.mean(0), 0)
 
-fig_pos_perf.suptitle("Mean-performance per neuron-neuron connection")
-fig_pos_perf.tight_layout()
-fig_pos_perf.savefig(OUTPUT_DIR/f"shift-perf_x_pos-mean.png")
-fig_pos_perf
 
-fig_pos_perf_top.suptitle("Top connections by mean-performance")
-fig_pos_perf_top.tight_layout()
-fig_pos_perf_top.savefig(OUTPUT_DIR/f"shift-top_perf_x_pos-mean.png")
-fig_pos_perf_top
+ax = plot_adjacency_map(
+    pos_perf_filtered,
+    title=f'Mean final acc per position > 0.25\nr:{radius}, d:{degree}')
+fname = OUTPUT_DIR/f"{OUTPUT_PREFIX}-avg_acc_per_pos-ressize_50-d_{degree}-r_{radius}.png"
+ax.figure.savefig(fname)
 
-fig_top_graph.suptitle("Top connections by mean-performance, graph")
-fig_top_graph.tight_layout()
-fig_top_graph.savefig(OUTPUT_DIR/f"shift-top_perf_graph.png")
-fig_top_graph
+# Top neurons per row
+TOP_N = degree
+
+top_neurons = torch.zeros_like(pos_perf_mean)
+for ri in range(pos_perf_mean.shape[0]):
+    top_idxs = (torch.argsort(pos_perf_mean[ri], descending=True)[:TOP_N])
+    top_neurons[ri][top_idxs] = 1
+
+ax = plot_adjacency_map(
+    top_neurons, colour_diagonal=0.5,
+    title=f'Top {TOP_N} connections by mean performance')
+ax.figure.savefig(OUTPUT_DIR/f"{OUTPUT_PREFIX}-top_perf_graph.png")
+
+fig, ax = plt.subplots()
+connections_to_digraph(top_neurons, axis_on=True, ax=ax)
+ax.set_title("Top {TOP_N} connections graph")
+fig.savefig(OUTPUT_DIR/f"{OUTPUT_PREFIX}-top_perf_graph.png")
+
+#
+
+print(topols.shape)
+plot_adjacency_map(topols.mean(0)).set(title='Mean weight values')
+
 
 # %%
 
@@ -220,9 +184,3 @@ fig_top_graph
 #     if trial_i.name.startswith(trial_prefix):
 
 
-
-
-
-
-
-# %%
