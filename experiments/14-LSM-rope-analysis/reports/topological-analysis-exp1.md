@@ -72,9 +72,7 @@ $$ (\forall n_i \in [0, N]):  \\
 B[n_i] \leftarrow \hat{y}_i
 $$ -->
 
-$$
-\space\space\space\space L(\hat{y}[ni-L_{scope}, ni], y[ni-L_{scope}, ni]) ; \forall n_i \in L_{scope}
-$$
+$\space\space\space\space L(\hat{y}[ni-L_{scope}, ni], y[ni-L_{scope}, ni]) ; \forall n_i \in L_{scope}$
 
 TODO: ADD washout
 
