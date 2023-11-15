@@ -10,6 +10,7 @@ reservoir_size: 20, radius: 4, degree [2, 3].
 
 
 """
+
 # %%
 from math import ceil
 import sys
@@ -39,8 +40,8 @@ def plot_adjacency_map(
             adj_[ri, ri] = colour_diagonal
 
     sns.heatmap(
-    adj_, vmin=0, vmax=1, linewidths=0.2,
-    ax=ax, cmap='coolwarm').set(**args)
+        adj_, vmin=0, vmax=1, linewidths=0.2,
+        ax=ax, cmap='binary').set(**args)
     ax.set_yticklabels(ax.get_yticklabels(), rotation=0)
     ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
     return ax
@@ -93,20 +94,22 @@ def connections_to_digraph(
 # %% -- Project Parameters --
 
 trials = [
-    'trial-r4-d2',  # r4, d2
-    'trial-r4-d3',  # r4, d3
-    'trial-r4-d1',  # r4, d1
-    'trial-r4-d4',  # r4, d4
-    'trial-r3-d1',  # r3, d1
-    'trial-r3-d2',  # r3, d2
-    'trial-r3-d3',  # r3, d3
-    'trial-r2-d2',  # r2, d2
-    'trial-r2-d1',  # r2, d1
-    'trial-r1-d1',  # r1, d1
+    # 'trial-r4-d2',  # r4, d2
+    # 'trial-r4-d3',  # r4, d3
+    # 'trial-r4-d1',  # r4, d1
+    # 'trial-r4-d4',  # r4, d4
+    # 'trial-r3-d1',  # r3, d1
+    # 'trial-r3-d2',  # r3, d2
+    # 'trial-r3-d3',  # r3, d3
+    # 'trial-r2-d2',  # r2, d2
+    # 'trial-r2-d1',  # r2, d1
+    # 'trial-r1-d1',  # r1, d1
+    "14-topol-trial3-s50-r16_-d2-quant3"
 ]
 
 OUTPUT_DIR = EXP_REPORT_DIR/"topological_analysis"
-expected_run_n = 100
+expected_run_n = 1000
+file_prefix = "rmax_"
 
 if not OUTPUT_DIR.exists():
     os.mkdir(OUTPUT_DIR)
@@ -124,9 +127,10 @@ for i, RUN_PREFIX in enumerate(trials):
 
     RUN_DIR = EXP_DATA_DIR/'experiments'/RUN_PREFIX
     subrun_paths = [run_i for run_i in RUN_DIR.iterdir() if run_i.is_dir()]
-    assert len(subrun_paths) == expected_run_n, \
-        f"{len(subrun_paths)} runs found for '{RUN_PREFIX}'," \
-        + f"expected {expected_run_n}"
+
+    # assert len(subrun_paths) == expected_run_n, \
+    #     f"{len(subrun_paths)} runs found for '{RUN_PREFIX}'," \
+    #     + f"expected {expected_run_n}"
 
     exp_params = ek.funx.load_yaml(subrun_paths[0]/"params.yaml")
     degree = exp_params['LIF_LIF_connections']['degree']
@@ -155,7 +159,7 @@ for i, RUN_PREFIX in enumerate(trials):
         pos_perf_mean,
         title=f'r:{radius}, d:{degree}',
         ax = axs_pos_perf[radius-1, degree-1])
-    fname = OUTPUT_DIR/f"avg_acc_per_pos-ressize_20-d_{degree}-r_{radius}.png"
+    fname = OUTPUT_DIR/f"{file_prefix}avg_acc_per_pos-ressize_20-d_{degree}-r_{radius}.png"
     ax.figure.savefig(fname)
 
     pos_perf_filtered = torch.where(
@@ -165,7 +169,7 @@ for i, RUN_PREFIX in enumerate(trials):
     ax = plot_adjacency_map(
         pos_perf_filtered,
         title=f'Mean final acc per position > 0.25\nr:{radius}, d:{degree}')
-    fname = OUTPUT_DIR/f"avg_acc_per_pos-ressize_20-d_{degree}-r_{radius}.png"
+    fname = OUTPUT_DIR/f"{file_prefix}avg_acc_per_pos-ressize_20-d_{degree}-r_{radius}.png"
     ax.figure.savefig(fname)
 
     # Top neurons per row
@@ -197,17 +201,17 @@ for ax_i, ax_j in axs_to_turn_off:
 
 fig_pos_perf.suptitle("Mean-performance per neuron-neuron connection")
 fig_pos_perf.tight_layout()
-fig_pos_perf.savefig(OUTPUT_DIR/f"perf_x_pos-mean.png")
+fig_pos_perf.savefig(OUTPUT_DIR/f"{file_prefix}perf_x_pos-mean.png")
 fig_pos_perf
 
 fig_pos_perf_top.suptitle("Top connections by mean-performance")
 fig_pos_perf_top.tight_layout()
-fig_pos_perf_top.savefig(OUTPUT_DIR/f"top_perf_x_pos-mean.png")
+fig_pos_perf_top.savefig(OUTPUT_DIR/f"{file_prefix}top_perf_x_pos-mean.png")
 fig_pos_perf_top
 
 fig_top_graph.suptitle("Top connections by mean-performance, graph")
 fig_top_graph.tight_layout()
-fig_top_graph.savefig(OUTPUT_DIR/f"top_perf_graph.png")
+fig_top_graph.savefig(OUTPUT_DIR/f"{file_prefix}top_perf_graph.png")
 fig_top_graph
 
 # %%
@@ -215,6 +219,7 @@ fig_top_graph
 # trial_prefix = 'S2'
 # for trial_i in EXP_REPORT_DIR.iterdir():
 #     if trial_i.name.startswith(trial_prefix):
+
 
 
 
