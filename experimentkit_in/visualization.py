@@ -1,7 +1,9 @@
 """ Visualization utilities"""
-from typing import List
+from typing import Iterable, List
 import matplotlib.pyplot as plt
 import numpy as np
+import seaborn as sns
+
 
 def plot_n_examples(
         X: np.ndarray, n: int, cols: int = 2, labels: List[str] = None):
@@ -45,3 +47,63 @@ def plot_n_examples(
 def get_cmap_colors(N, cmap='brg'):
     cmap = plt.cm.get_cmap(cmap)
     return [cmap(value) for value in np.linspace(0, 1, N)]
+
+
+def plot_heatmap_discrete(
+        tensor: Iterable,
+        categories: Iterable,
+        cmap_colors: list = None,
+        **heatmap_kwargs) -> plt.Axes:
+    """
+    Displays a heatmap using Seaborn, with distinct colors based on the
+    specified categories.
+
+    Parameters
+    ----------
+    tensor : torch.Tensor
+        The data tensor for which to create the heatmap.
+    categories : List[int]
+        The list of categories for which to define 
+        distinct colors.
+    cmap_colors: list
+        The list of colors to use as a colormap. It must be as long as
+        `categories`.
+
+    Returns
+    -------
+    None
+
+    Example:
+    >>> tensor_data = torch.tensor([
+    ...    [-2, 0.5, 1, -2, 0.5, 1, -2, 0.5, 1, -2],
+    ...    [-2, 0.5, 1, -2, 0.5, 1, -2, 0.5, 1, -2],
+    ...    [-2, 0.5, 1, -2, 0.5, 1, -2, 0.5, 1, -2],
+    ...    [-2, 0.5, 1, -2, 0.5, 1, -2, 0.5, 1, -2],
+    ...    [-2, 0.5, 1, -2, 0.5, 1, -2, 0.5, 1, -2],
+    ...    [-2, 0.5, 1, -2, 0.5, 1, -2, 0.5, 1, -2],
+    ...    [-2, 0.5, 1, -2, 0.5, 1, -2, 0.5, 1, -2],
+    ...    [-2, 0.5, 1, -2, 0.5, 1, -2, 0.5, 1, -2],
+    ...    [-2, 0.5, 1, -2, 0.5, 1, -2, 0.5, 1, -2],
+    ...    [-2, 0.5, 1, -2, 0.5, 1, -2, 0.5, 1, -2],
+    ... ])
+    >>> categories = [-2, 0.5, 1]
+    >>> plot_heatmap_discrete(tensor_data, categories)
+    """
+    if cmap_colors is None:
+        cmap = sns.color_palette("rocket", n_colors=len(categories))
+    else:
+        cmap = sns.color_palette(cmap_colors, as_cmap=True)
+
+    ax = sns.heatmap(
+            tensor, cmap=cmap,
+            vmin=0, vmax=1, fmt=".1f",
+            **heatmap_kwargs
+        )
+
+    n_cats = len(categories)
+    colorbar = ax.collections[0].colorbar
+    r = colorbar.vmax - colorbar.vmin
+    cbar_ticks = [colorbar.vmin + r / n_cats * (0.5 + i) for i in range(n_cats)]
+    colorbar.set_ticks(cbar_ticks)
+    colorbar.set_ticklabels(categories)   
+    return ax        
