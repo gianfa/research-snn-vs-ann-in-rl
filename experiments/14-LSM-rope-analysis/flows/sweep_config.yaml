@@ -1,4 +1,4 @@
-method: random
+method: bayes
 metric:
   goal: minimize
   name: loss_val
@@ -14,22 +14,24 @@ parameters:
   neuron_learn_threshold:
     value: False
   lif_i_input_n:
-    value: 10
+    value: 30
+  ro_lif_output_n:
+    value: 24
   lif_i_gain:
-    value: .5
+    distribution: uniform
+    min: .27
+    max: .31
   lif_lif_gain:
-    value: .5
+    distribution: uniform
+    min: .2
+    max: .35
   lif_lif_weights_dist:
-    value: normal
+    value: uniform
 
   radius:
-    distribution: uniform
-    min: 1
-    max: 22
+    values: [2, 12, 13, 14]
   degree:
-    distribution: uniform
-    min: 1
-    max: 5
+    values: [3, 5, 6, 13]
 
   enable_dyn_synapses:
     value: True
@@ -39,10 +41,10 @@ parameters:
     value: normal
   syn_decay_rate:
     value: .25
-  ro_lif_output_n:
-    value: 10
   optim_lr:
-    value: .1
+    distribution: uniform
+    min: .2
+    max: .7
   training_epochs:
     value: 1
   training_loss_scope:
