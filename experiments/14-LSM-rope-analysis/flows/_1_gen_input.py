@@ -133,7 +133,8 @@ fig.tight_layout()
 
 
 I = dirty_signal
-I = I.clip(min=0)
+
+#I = I.clip(min=0)
 
 # # Labels (y) definition
 y = labels
