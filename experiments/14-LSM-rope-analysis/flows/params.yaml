@@ -10,24 +10,24 @@ net:
   neuron_learn_threshold: False
 
 LIF_I_connections:
-  input_to_reservoir: 10
-  gain: .5
+  input_to_reservoir: 32
+  gain: .27
 
 LIF_LIF_connections:
-  gain: .5
+  gain: .35
   weigths_dist: normal
-  radius: 20
-  degree: 4
+  radius: 12
+  degree: 6
   enable_dyn_synapses: True
   syn_initial_conductance: 1
   syn_decay_rate_dist: normal
   syn_decay_rate: .25
 
 readout_LIF_connections:
-  reservoir_output_n: 10
+  reservoir_output_n: 20
 
 optim:
-  lr: .1
+  lr: .63
 
 training:
   epochs: 1
