@@ -73,10 +73,9 @@ Given:
 B[n_i] \leftarrow \hat{y}_i
  -->
 
-$\space\space\space\space L(\hat{y}[n_i-L_{scope}, n_i], y[n_i-L_{scope}, n_i]) ; \forall \, n_i \mod L_{scope}$
+$\space\space\space\space L(\hat{y}[n_i-L_{scope}, n_i], y[n_i-L_{scope}, n_i]) ; \forall \, n_i > T_W : n_i \mod L_{scope} = 0$
 
 
-TODO: ADD washout
 
 ```
 {below, incomplete code to be continued}
