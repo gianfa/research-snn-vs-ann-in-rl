@@ -64,7 +64,8 @@ At each time step, $n_i$, the network, $Z$, receives a $s[n_i]$ element which is
 At a specific step interval, $l_{scope}$ (250), the loss is calculated over the the whole buffer. Let's see the main stages of the process.
 
 Given:
-* a $L_{scope} \in \mathbb{N}, L_{scope}<N$ , loss scope. Step interval at which the loss is computed.
+* a $L_{scope} \in \mathbb{N}, L_{scope} < N$ , loss scope. Step interval at which the loss is computed.
+* a $T_{w} \in \mathbb{N}$; $T_{w}<T$, washout time
 
 <!-- * a buffer $B_{y}$,  
 $$ (\forall n_i \in [0, N]):  \\
