@@ -65,7 +65,7 @@ from experimentkit_in.logger_config import setup_logger
 # %% Project Parameters
 
 
-RUN_PREFIX = f'trial-r1-d1'
+RUN_PREFIX = f'trial-r4-d4-o3'
 
 exp_outdata_dir = EXP_DATA_DIR/'experiments'
 data_path = EXP_DATA_DIR/"2freq_toy_ds-20000-sr_50-n_29.pkl"
@@ -164,7 +164,8 @@ for sample_i in range(n_samples):
     conn_lif_lif_topology = src_14.topologies.gen_rope(
         reservoir_size, reservoir_size,
         radius=params['LIF_LIF_connections']['radius'],
-        degree=params['LIF_LIF_connections']['degree'])
+        degree=params['LIF_LIF_connections']['degree'],
+        offset=params['LIF_LIF_connections']['offset'])
 
     # topology: weights
     conn_lif_lif_weigths_dist = params['LIF_LIF_connections']['weigths_dist']

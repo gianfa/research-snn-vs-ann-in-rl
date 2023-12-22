@@ -1,6 +1,6 @@
 net:
   input_size: 1
-  reservoir_size: 50
+  reservoir_size: 20
   output_size: 3
 
   base_input_current_type: noisy
@@ -16,8 +16,9 @@ LIF_I_connections:
 LIF_LIF_connections:
   gain: .5
   weigths_dist: normal
-  radius: 20
+  radius: 4
   degree: 4
+  offset: 3
   enable_dyn_synapses: True
   syn_initial_conductance: 1
   syn_decay_rate_dist: normal
