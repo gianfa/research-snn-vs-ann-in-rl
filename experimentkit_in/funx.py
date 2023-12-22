@@ -1,6 +1,7 @@
 """ Utility functions 
 
 """
+from datetime import datetime
 import matplotlib.pyplot as plt
 import numpy as np
 import os
@@ -80,6 +81,24 @@ def generate_random_name(length: str = 22, with_timestamp: bool = True) -> str:
     rand_chars = "".join(
         [bank[ci] for ci in np.random.choice(len(bank), to_len)])
     return f"{tstamp}-{rand_chars}"
+
+
+def generate_current_datetime_string_no_sep():
+    """
+    Generates a string containing the current timestamp up to hundredths of a second,
+    formatted without separators.
+
+    Returns
+    -------
+        (str) A string representing the timestamp.
+    """
+    # Current datetime with microseconds
+    current_time = datetime.now()
+
+    # Formatting datetime to include up to hundredths of a second
+    formatted_time = current_time.strftime("%y%m%d%H%M%S%f")[:14]
+
+    return formatted_time
 
 
 def moving_average(signal: np.array, window_size: int = None) -> np.array:
