@@ -4,7 +4,7 @@ metric:
   name: loss_val
 parameters:
   net_reservoir_size:
-    value: 50
+    value: 20
   base_input_current_type:
     value: noisy
   base_input_current_gain:
@@ -16,20 +16,22 @@ parameters:
   lif_i_input_n:
     value: 10
   lif_i_gain:
-    value: .5
+    values: .7
   lif_lif_gain:
     value: .5
   lif_lif_weights_dist:
     value: normal
 
   radius:
-    distribution: uniform
-    min: 1
-    max: 22
+    value: 4
+    # distribution: uniform
+    # min: 1
+    # max: 22
   degree:
-    distribution: uniform
-    min: 1
-    max: 5
+    values: 3
+    # distribution: uniform
+    # min: 1
+    # max: 5
 
   enable_dyn_synapses:
     value: True

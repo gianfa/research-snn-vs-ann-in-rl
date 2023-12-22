@@ -61,7 +61,7 @@ wandb.login()
 # %% Project Parameters
 
 
-RUN_PREFIX = f'trial3-overall'
+RUN_PREFIX = f'trial5-50n'
 data_path = EXP_DATA_DIR/"2freq_toy_ds-20000-sr_50-n_29.pkl"
 
 # %% Project setup
@@ -104,7 +104,7 @@ targets = torch.nn.functional.one_hot(targets.to(int), num_classes=num_classes)
 
 
 def wandb_main():
-    wandb.init(project=f'{EXP_DIR.name}|{RUN_PREFIX}', entity='gianfa')
+    run = wandb.init(project=f'{EXP_DIR.name}|{RUN_PREFIX}', entity='gianfa')
     config = wandb.config
     # %% Input definition
 
@@ -184,6 +184,11 @@ def wandb_main():
     ek.funx.pickle_save_dict(
         RUN_REPORT_DIR/"reservoir_topology.pkl",
         {'conn_lif_lif': conn_lif_lif})
+
+    # Save artifacts on wandb
+    conn_lif_lif_af = wandb.Artifact('conn_lif_lif', type='tensor')
+    conn_lif_lif_af.add_file(conn_lif_lif)
+    run.log_artifact(conn_lif_lif_af)
 
     lif1_has_autapsys = False
     lif1_sparsity = 0
