@@ -61,8 +61,10 @@ wandb.login()
 # %% Project Parameters
 
 
-RUN_PREFIX = f'trial5-50n'
+# RUN_PREFIX = f'14-trial8-rx-dx-quant-3'
+RUN_PREFIX = f'14-topol-trial9-s50-r16_-d2-quant3-delta_enc'
 data_path = EXP_DATA_DIR/"2freq_toy_ds-20000-sr_50-n_29.pkl"
+synapses_quantization_bins = 3
 
 # %% Project setup
 
@@ -77,7 +79,8 @@ logger = setup_logger(
 
 # %% Dataset loading
 
-if data_path.exists():
+reload = True
+if data_path.exists() and reload:
     I_y = ek.funx.pickle_load(data_path)
     I, y = I_y['I'], I_y['y']
     data, targets = I, y
@@ -99,10 +102,13 @@ targets = targets.to(DEVICE)
 num_classes = 3
 targets = torch.nn.functional.one_hot(targets.to(int), num_classes=num_classes)
 # targets = y
+# %%
+# # ENCODE #
+#data = data.clip(min=0)
+# delta-encode
+data = spikegen.delta(data.clone(), threshold=.1)
 
-
-
-
+# %%
 def wandb_main():
     run = wandb.init(project=f'{EXP_DIR.name}|{RUN_PREFIX}', entity='gianfa')
     config = wandb.config
@@ -125,7 +131,7 @@ def wandb_main():
     output_size = 3
 
     # selected subset input/output
-    reservoir_output_n = config['ro_lif_output_n']
+    reservoir_output_n = int(config['ro_lif_output_n'])
     reservoir_output = (
         torch.arange(reservoir_size).flip(dims=(0,))[:reservoir_output_n])
 
@@ -139,7 +145,7 @@ def wandb_main():
     # the value of the non-zero LIF-I connections
     conn_lif_I_gain = config['lif_i_gain']
     # n of reservoir neurons to feed by I
-    reservoir_fed_neurons_n = config['lif_i_input_n']
+    reservoir_fed_neurons_n = int(config['lif_i_input_n'])
 
     conn_lif_I = torch.zeros(input_size, reservoir_size)
     reservoir_fed_neurons = \
@@ -180,6 +186,12 @@ def wandb_main():
     assert conn_lif_lif.diag().sum() == 0
 
     # conn_lif_lif = torch.ones(reservoir_size, reservoir_size) * 0.05
+
+    # quantize
+    if synapses_quantization_bins is not None and synapses_quantization_bins>0:
+        logger.info("Performing, quantization")
+        conn_lif_lif = src_14.funx.quantize_to_bins(
+            conn_lif_lif, synapses_quantization_bins)
 
     ek.funx.pickle_save_dict(
         RUN_REPORT_DIR/"reservoir_topology.pkl",
@@ -271,9 +283,9 @@ def wandb_main():
     eval_scope = loss_scope
 
     buffer_capacity = config['training_buffer_capacity']
-    yi_pred_buffer = ek.collections.FIFO_buffer(capacity=buffer_capacity)
-    yi_pred_logits_buffer = ek.collections.FIFO_buffer(capacity=buffer_capacity)
-    yi_buffer = ek.collections.FIFO_buffer(capacity=buffer_capacity)
+    yi_pred_buffer = ek.collections_utils.FIFO_buffer(capacity=buffer_capacity)
+    yi_pred_logits_buffer = ek.collections_utils.FIFO_buffer(capacity=buffer_capacity)
+    yi_buffer = ek.collections_utils.FIFO_buffer(capacity=buffer_capacity)
 
     washout_time = config['training_washout_time']
 
@@ -388,6 +400,8 @@ def wandb_main():
         ax.set_xlabel("iteration/dw")
         fname = RUN_REPORT_DIR/"accuracy.png"
         fig.savefig(fname)
+
+        loss_last_mean = losses[-int(len(losses)*.1):].mean()
 
         wandb.log({
             "acc_mean": acc_mean,

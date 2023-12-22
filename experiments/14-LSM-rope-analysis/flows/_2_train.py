@@ -43,10 +43,6 @@ Notes
 - TUNING| loss_scope ~ 12 * subsig_len
 - TUNING| normal distribution of decay rates seems to act as a stabilizer sometimes
 
-TODO:
-- research on topology
-    - (save topology)
-    - plot cell vs probab to high accuracy
 
 sampling on same degre, radius, varying translation along k
 
@@ -56,6 +52,7 @@ https://colab.research.google.com/github/jeshraghian/snntorch/blob/master/exampl
 """
 # %%
 import sys
+import time
 
 sys.path += ['../', '../../../']
 from _0_config import *
@@ -65,13 +62,15 @@ from experimentkit_in.logger_config import setup_logger
 # %% Project Parameters
 
 
-RUN_PREFIX = f'trial-r4-d4-o3'
+# RUN_PREFIX = f'14-topol-trial4-s50-r16_-d2-quant3'
+RUN_PREFIX = f'trash'
 
 exp_outdata_dir = EXP_DATA_DIR/'experiments'
 data_path = EXP_DATA_DIR/"2freq_toy_ds-20000-sr_50-n_29.pkl"
 description = "Performance Sampling vs radius and degree"
 
 n_samples = 100
+synapses_quantization_bins = 3
 
 for sample_i in range(n_samples):
     # Project setup
@@ -107,6 +106,9 @@ for sample_i in range(n_samples):
     num_classes = 3
     targets = torch.nn.functional.one_hot(targets.to(int), num_classes=num_classes)
     # targets = y
+
+    # delta-encode
+    data = spikegen.delta(data.clone(), threshold=.5)
 
     # Input definition
 
@@ -180,9 +182,16 @@ for sample_i in range(n_samples):
 
     conn_lif_lif = conn_lif_lif_topology * conn_lif_lif_gain
 
+    # remove autapses
     assert conn_lif_lif.diag().sum() == 0
 
     # conn_lif_lif = torch.ones(reservoir_size, reservoir_size) * 0.05
+
+    # quantize
+    if synapses_quantization_bins is not None and synapses_quantization_bins>0:
+        logger.info("Performing, quantization")
+        conn_lif_lif = src_14.funx.quantize_to_bins(
+            conn_lif_lif, synapses_quantization_bins)
 
     ek.funx.pickle_save_dict(
         RUN_REPORT_DIR/"reservoir_topology.pkl",
@@ -431,9 +440,13 @@ for sample_i in range(n_samples):
     import seaborn as sns
 
     fig, ax = plt.subplots(figsize=(10, 10))
-    sns.heatmap(
-        conn_lif_lif, cmap='bwr', cbar=True,
-        linewidths=0, linecolor='grey', ax=ax)
+    if synapses_quantization_bins is not None:
+        ek.visualization.plot_heatmap_discrete(
+            conn_lif_lif, conn_lif_lif.unique().tolist())
+    else:
+        sns.heatmap(
+            conn_lif_lif, cmap='binary', cbar=True,
+            linewidths=0, linecolor='grey', ax=ax)
     ax.set_xlabel('Neuron id')
     ax.set_ylabel('Neuron id')
     ax.set_title('LIF-LIF Connections Matrix')
