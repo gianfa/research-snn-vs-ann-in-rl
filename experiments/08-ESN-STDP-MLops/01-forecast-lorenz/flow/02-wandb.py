@@ -66,6 +66,7 @@ print(params)
 report.add_code(txt=json.dumps(params), language="python", indent=4)
 
 # %%Training
+
 import wandb
 
 wandb.login()
@@ -77,25 +78,20 @@ def wandb_main():
     # %%  --- Network Parameters ---
     bs = 1
 
-    # TODO: create a sweeps file and convert params to sweeps
-
     # update params
-    params['data']['example_len'] = exp_dict['example_len']
-    params['data']['shift'] = exp_dict['shift']
-    params['experiment']['n_STDP_steps'] = exp_dict['n_STDP_steps']
-    params['experiment']['STDP_scope'] = exp_dict['STDP_scope']
-    params['model']['decay'] = exp_dict['decay']
-    # params['STDP']['A_plus'] = exp_dict['A_plus']
-    # params['STDP']['A_minus'] = exp_dict['A_minus']
-    # params['STDP']['tau_plus'] = exp_dict['tau_plus']
-    # params['STDP']['tau_minus'] = exp_dict['tau_minus']
-        
-    ek.funx.pickle_save_dict(exp_dir/"params.pkl", params)
-    print(params)
+    # config['data_example_len'] = exp_dict['example_len']
+    # config['data_shift'] = exp_dict['shift']
+    # config['experiment_n_STDP_steps'] = exp_dict['n_STDP_steps']
+    # config['experiment_STDP_scope'] = exp_dict['STDP_scope']
+    # config['model_decay'] = exp_dict['decay']
+    # config['STDP_A_plus'] = exp_dict['A_plus']
+    # config['STDP_A_minus'] = exp_dict['A_minus']
+    # config['STDP_tau_plus'] = exp_dict['tau_plus']
+    # config['STDP_tau_minus'] = exp_dict['tau_minus']
 
 
-    reservoir_size = params['model']['reservoir_size']
-    STDP_scope = params['experiment']['STDP_scope']
+    reservoir_size = config['model_reservoir_size']
+    STDP_scope = config['STDP_scope']
 
     # STDP-Execute
     """ Many trials implementing STDP ESN weights update
@@ -131,19 +127,19 @@ def wandb_main():
 
     perf_hist_stdp = []
 
-    n_trials = params['experiment']['n_trials']
-    n_STDP_steps = params['experiment']['n_STDP_steps']
+    n_trials = config['exp_n_trials']
+    n_STDP_steps = config['exp_n_STDP_steps']
     verbose = False
 
     # Data Loading
     X_train, X_valid, X_test, y_train, y_valid, y_test = \
         src08_f.expt_generate_new_lorenz_data(
-            example_len = params['data']['example_len'],
-            test_size = params['data']['test_size'],
-            valid_size = params['data']['valid_size'],
+            example_len = config['data_example_len'],
+            test_size = config['data_test_size'],
+            valid_size = config['data_valid_size'],
             recompute = True,
-            ds_path = exp_dir/f"ds_lorenz.pkl",
-            shift = params['data']['shift'],  # forecasted delay
+            ds_path = EXP_DATA_DIR/f"ds_lorenz.pkl",  # TODO: <<<-<----<<-<--------
+            shift = config['data_shift'],  # forecasted delay
             s=12, r=30, b=2.700,
             time_last = True,
         )
@@ -198,10 +194,10 @@ def wandb_main():
                 dw_rule = "sum",
                 max_delta_t=4,
                 STDP_kwargs={
-                    'A_plus': params['STDP']['A_plus'],
-                    'A_minus': params['STDP']['A_minus'],
-                    'tau_plus': params['STDP']['tau_plus'],
-                    'tau_minus': params['STDP']['tau_minus']
+                    'A_plus': config['STDP_A_plus'],
+                    'A_minus': config['STDP_A_minus'],
+                    'tau_plus': config['STDP_tau_plus'],
+                    'tau_minus': config['STDP_tau_minus']
                 }
             )
             # Normalize weights
@@ -265,14 +261,22 @@ def wandb_main():
     W_hist_stdp = torch.stack(W_hist_stdp)
     W_hist_nonstdp = torch.stack(W_hist_nonstdp)
 
-    ek.funx.pickle_save_dict(exp_dir/'perf_hist_nonstdp.pkl', perf_hist_nonstdp)
-    ek.funx.pickle_save_dict(exp_dir/'perf_hist_after_stdp.pkl', perf_hist_after_stdp)
     ek.funx.pickle_save_dict(
-        exp_dir/'perf_hist_stdp.pkl',
+        EXP_DATA_DIR/'perf_hist_nonstdp.pkl', perf_hist_nonstdp)
+    ek.funx.pickle_save_dict(
+        EXP_DATA_DIR/'perf_hist_after_stdp.pkl', perf_hist_after_stdp)
+    ek.funx.pickle_save_dict(
+        EXP_DATA_DIR/'perf_hist_stdp.pkl',
         {'perf_hist_stdp': perf_hist_stdp})
     ek.funx.pickle_save_dict(
-        exp_dir/'W_hist_stdp.pkl', {'W_hist_stdp': W_hist_stdp})
+        EXP_DATA_DIR/'W_hist_stdp.pkl', {'W_hist_stdp': W_hist_stdp})
     ek.funx.pickle_save_dict(
-        exp_dir/'W_hist_nonstdp.pkl', {'W_hist_nonstdp': W_hist_nonstdp})
+        EXP_DATA_DIR/'W_hist_nonstdp.pkl', {'W_hist_nonstdp': W_hist_nonstdp})
+
+
+sweep_id = wandb.sweep(
+    sweep=params, project=f'{EXP_DIR.name}|{RUN_NAME}')
+
+wandb.agent(sweep_id, function=wandb_main)
 
 # %%
