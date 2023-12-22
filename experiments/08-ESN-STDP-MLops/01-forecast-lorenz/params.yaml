@@ -1,0 +1,28 @@
+
+
+data:
+  example_len: 10000
+  test_size: 0.2
+  valid_size: 0.15
+  shift: 5
+
+model:
+  reservoir_size: 100
+  decay: 0.5
+
+STDP:
+  # STDP_steps_scope: (int). Last steps to consider for STDP spike collection
+  STDP_steps_scope: 20
+  A_minus: 0.2
+  A_plus: 0.2
+  tau_plus: 0.005
+  tau_minus: 0.0048
+
+
+# Here we measure the performance distribution of many trials, since
+# the randomicity of the initialization may alter the performance.
+experiment:
+  # n_trials: (int).
+  n_trials: 5
+  # n_STDP_steps: (int). How many times apply the STDP per each time step
+  n_STDP_steps: 5
