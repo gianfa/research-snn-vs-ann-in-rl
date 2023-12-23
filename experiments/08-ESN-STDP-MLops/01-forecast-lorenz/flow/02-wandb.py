@@ -29,7 +29,6 @@ in funzione della lunghezza del segnale
 from config import *
 
 from copy import deepcopy
-import itertools
 
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 from sklearn.model_selection import train_test_split
@@ -42,7 +41,8 @@ from stdp import funx as stdp_f
 import src08.funx as src08_f
 
 
-RUN_NAME = f"exp-1-{ek.funx.generate_current_datetime_string_no_sep()}"
+RUN_NAME = "exp-1"
+# RUN_NAME = f"{RUN_NAME}-{ek.funx.generate_current_datetime_string_no_sep()}"
 
 TRIALS_DIR = EXP_DATA_DIR/"trails"
 RUN_DIR = TRIALS_DIR/RUN_NAME
@@ -60,12 +60,13 @@ recompute = False
 # if __name__ == '__main__':
 #     params = argparse_config()
 
-params = load_yaml(EXP_DIR/'params.yaml')
+params = load_yaml(EXP_DIR/'sweeps.yaml')
 ek.funx.yaml_save_dict(RUN_RESULTS_DIR/"params.pkl", params)
-print(params)
-report.add_code(txt=json.dumps(params), language="python", indent=4)
+# print(params)
+# report.add_code(txt=json.dumps(params, indent=4), language="python")
 
 # %%Training
+report.add_txt(f"## Training")
 
 import wandb
 
@@ -74,24 +75,19 @@ wandb.login()
 def wandb_main():
     wandb.init(project=f'{EXP_DIR.name}|{RUN_NAME}', entity='gianfa')
     config = wandb.config
+    # report = ek.reporting.ReportMD(RUN_DIR/"README.md", title=EXP_NAME)
 
     # %%  --- Network Parameters ---
     bs = 1
 
-    # update params
-    # config['data_example_len'] = exp_dict['example_len']
-    # config['data_shift'] = exp_dict['shift']
-    # config['experiment_n_STDP_steps'] = exp_dict['n_STDP_steps']
-    # config['experiment_STDP_scope'] = exp_dict['STDP_scope']
-    # config['model_decay'] = exp_dict['decay']
-    # config['STDP_A_plus'] = exp_dict['A_plus']
-    # config['STDP_A_minus'] = exp_dict['A_minus']
-    # config['STDP_tau_plus'] = exp_dict['tau_plus']
-    # config['STDP_tau_minus'] = exp_dict['tau_minus']
-
+    # ek.funx.yaml_save_dict(
+    #     RUN_RESULTS_DIR/"params.pkl", config._items)
+    # report.add_code(
+    #     json.dumps(config._items,
+    #     indent=4), language="python")
 
     reservoir_size = config['model_reservoir_size']
-    STDP_scope = config['STDP_scope']
+    STDP_scope = config['STDP_steps_scope']
 
     # STDP-Execute
     """ Many trials implementing STDP ESN weights update
@@ -115,6 +111,7 @@ def wandb_main():
     th = 0  # spike threshold
     perf_hist_nonstdp = {'mse': [], 'mae': [], 'r2': []}
 
+
     perf_hist_after_stdp = {'mse': [], 'mae': [], 'r2': []}
     """Mean performance history of STDP optimisation
     every element is the last performance along all the optimisation steps
@@ -131,14 +128,17 @@ def wandb_main():
     n_STDP_steps = config['exp_n_STDP_steps']
     verbose = False
 
-    # Data Loading
+    # # Data Loading
+    # report.add_txt(
+    #     f"### Data Loading\nLorenz oscillator is generated with the "
+    #     + r"following parameters: $\sigma=12; \rho=30; \beta=2.7$.")
     X_train, X_valid, X_test, y_train, y_valid, y_test = \
         src08_f.expt_generate_new_lorenz_data(
             example_len = config['data_example_len'],
             test_size = config['data_test_size'],
             valid_size = config['data_valid_size'],
             recompute = True,
-            ds_path = EXP_DATA_DIR/f"ds_lorenz.pkl",  # TODO: <<<-<----<<-<--------
+            ds_path = RUN_RESULTS_DIR/f"ds_lorenz.pkl",
             shift = config['data_shift'],  # forecasted delay
             s=12, r=30, b=2.700,
             time_last = True,
@@ -147,6 +147,12 @@ def wandb_main():
     W_hist_nonstdp = []
     W_hist_stdp =  []
 
+    # report.add_txt(
+    # f"### Data Loading\nLorenz oscillator is generated with the "
+    # + "following parameters: $\sigma=12; \rho=30; \beta=2.7$."
+    # + "A series of trials is initiated. This is to have at the end a "
+    # + "statistical analysis of the expected performance, considering "
+    # + "the aspect of uncertainty given by the inherent chaotic nature.")
     for i in range(n_trials):
     
         print(f"INFO: Trial #{i}")
@@ -169,9 +175,11 @@ def wandb_main():
             if m_name not in perf_hist_nonstdp:
                 perf_hist_nonstdp[m_name] = []
             perf_hist_nonstdp[m_name].append(m_val)
+            wandb.log({f"perf_hist_after_stdp_{m_name}": m_val})
 
         
         W_hist_nonstdp.append(esn.W.data)
+        wandb.log({f"W_hist_nonstdp_avg": esn.W.data.mean()})
         
         # STDP Update
         perf_hist_stdp_inner = {}
@@ -207,7 +215,6 @@ def wandb_main():
                 new_W = (0.5 * new_W + \
                     torch.randn_like(esn.W) * 0.5)
             new_W *= esn.connections
-
             # ensure weights matrix reflects the connections
             n_exceding_connections = (
                 (new_W != 0).to(torch.int) - \
@@ -232,7 +239,9 @@ def wandb_main():
                 if m_name not in perf_hist_stdp_inner:
                     perf_hist_stdp_inner[m_name] = []
                 perf_hist_stdp_inner[m_name].append(m_val)
-            
+        
+        wandb.log({f"W_hist_stdp_avg": esn.W.data.mean()})
+
         # perf_hist_stdp.append(
         #     {k: np.mean(v) for k, v in perf_hist_stdp_inner.items()})
         perf_hist_stdp_inner = {
@@ -240,9 +249,11 @@ def wandb_main():
         perf_hist_stdp.append(perf_hist_stdp_inner)
 
         for m_name, m_hist in perf_hist_stdp_inner.items():
-                if m_name not in perf_hist_stdp_inner:
-                    perf_hist_after_stdp[m_name] = []
-                perf_hist_after_stdp[m_name].append(m_hist[-1].item())
+            if m_name not in perf_hist_stdp_inner:
+                perf_hist_after_stdp[m_name] = []
+            perf_hist_after_stdp[m_name].append(m_hist[-1].item())
+            wandb.log({f"perf_hist_after_stdp_{m_name}": m_hist[-1].item()})
+                
 
         print(f"t: {time.time() - t0:.0f}s")
 
@@ -253,8 +264,6 @@ def wandb_main():
 
     perf_stats_after = pd.DataFrame(perf_hist_after_stdp).describe()
     print(perf_stats_after)
-
-
     
     W_hist_stdp = [
         torch.stack(W_hist_stdp_i) for W_hist_stdp_i in W_hist_stdp]
@@ -262,16 +271,16 @@ def wandb_main():
     W_hist_nonstdp = torch.stack(W_hist_nonstdp)
 
     ek.funx.pickle_save_dict(
-        EXP_DATA_DIR/'perf_hist_nonstdp.pkl', perf_hist_nonstdp)
+        RUN_RESULTS_DIR/'perf_hist_nonstdp.pkl', perf_hist_nonstdp)
     ek.funx.pickle_save_dict(
-        EXP_DATA_DIR/'perf_hist_after_stdp.pkl', perf_hist_after_stdp)
+        RUN_RESULTS_DIR/'perf_hist_after_stdp.pkl', perf_hist_after_stdp)
     ek.funx.pickle_save_dict(
-        EXP_DATA_DIR/'perf_hist_stdp.pkl',
+        RUN_RESULTS_DIR/'perf_hist_stdp.pkl',
         {'perf_hist_stdp': perf_hist_stdp})
     ek.funx.pickle_save_dict(
-        EXP_DATA_DIR/'W_hist_stdp.pkl', {'W_hist_stdp': W_hist_stdp})
+        RUN_RESULTS_DIR/'W_hist_stdp.pkl', {'W_hist_stdp': W_hist_stdp})
     ek.funx.pickle_save_dict(
-        EXP_DATA_DIR/'W_hist_nonstdp.pkl', {'W_hist_nonstdp': W_hist_nonstdp})
+        RUN_RESULTS_DIR/'W_hist_nonstdp.pkl', {'W_hist_nonstdp': W_hist_nonstdp})
 
 
 sweep_id = wandb.sweep(
