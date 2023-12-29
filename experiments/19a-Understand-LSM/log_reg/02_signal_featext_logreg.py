@@ -28,6 +28,7 @@ import torch
 from utils import ts_gen_signal_with_sin_fragments
 
 IMGS_DIR = Path("../imgs")
+SAVE_FIG = True
 assert IMGS_DIR.exists()
 
 # %% Generate data
@@ -80,7 +81,7 @@ print(f"INFO| balance_train: {balance_train:.2f}")
 
 scaler = StandardScaler()
 X_train_scaled = scaler.fit_transform(X_train)
-pca = PCA(n_components=.99)  # Mantiene il 95% della varianza
+pca = PCA(n_components=.99)
 X_train_pca = pca.fit_transform(X_train_scaled)
 
 scaler = StandardScaler()
@@ -146,6 +147,6 @@ axs[1].set_xlim(int(test_offset * 0.95), len(signal))
 axs[1].axvline(test_offset, linestyle='dashed', color='grey')
 axs[1].legend(["Signal", "Predictions"], loc='lower right')
 
-fig.savefig(IMGS_DIR/"02-logreg-pca.png")
+SAVE_FIG and fig.savefig(IMGS_DIR/"02-logreg-pca.png")
 
 # %%
