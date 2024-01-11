@@ -42,7 +42,7 @@ import src08.funx as src08_f
 
 
 RUN_NAME = "exp-1"
-# RUN_NAME = f"{RUN_NAME}-{ek.funx.generate_current_datetime_string_no_sep()}"
+RUN_NAME = f"{RUN_NAME}-{ek.funx.generate_current_datetime_string_no_sep()}"
 
 TRIALS_DIR = EXP_DATA_DIR/"trails"
 RUN_DIR = TRIALS_DIR/RUN_NAME
@@ -71,6 +71,12 @@ report.add_txt(f"## Training")
 import wandb
 
 wandb.login()
+
+
+perf_diff = {"mae": [], "mse": []}
+""" Performance differences
+each value is about a `AFTER_STDP - NO_STDP` difference
+"""
 
 def wandb_main():
     wandb.init(project=f'{EXP_DIR.name}|{RUN_NAME}', entity='gianfa')
@@ -175,7 +181,7 @@ def wandb_main():
             if m_name not in perf_hist_nonstdp:
                 perf_hist_nonstdp[m_name] = []
             perf_hist_nonstdp[m_name].append(m_val)
-            wandb.log({f"perf_hist_after_stdp_{m_name}": m_val})
+            wandb.log({f"perf_hist_nonstdp{m_name}": m_val})
 
         
         W_hist_nonstdp.append(esn.W.data)
@@ -253,7 +259,20 @@ def wandb_main():
                 perf_hist_after_stdp[m_name] = []
             perf_hist_after_stdp[m_name].append(m_hist[-1].item())
             wandb.log({f"perf_hist_after_stdp_{m_name}": m_hist[-1].item()})
-                
+        
+        perf_hist_diff = {}
+        for m_name in report.keys():
+            perf_hist_diff[m_name] = \
+                perf_hist_nonstdp[m_name][-1] - perf_hist_after_stdp[m_name][-1]
+            wandb.log({
+                f"perf_hist_{m_name}-diff": perf_hist_diff[m_name]})
+
+        perf_diff['mae'].append(perf_hist_diff['mae'])
+        perf_diff['mse'].append(perf_hist_diff['mse'])
+        wandb.log({
+            'diff_mae': perf_hist_diff['mae'],
+            'diff_mse': perf_hist_diff['mse']
+        })
 
         print(f"t: {time.time() - t0:.0f}s")
 
