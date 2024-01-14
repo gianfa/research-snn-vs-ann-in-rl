@@ -9,6 +9,7 @@ def setup_logger(
     -------
     >>> import logger_config
     >>> logger = logger_config.setup_logger('my_logger', log_level='DEBUG')
+    >>> logger.info("my log")
     """
     config = {
         'version': 1,

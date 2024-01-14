@@ -1,0 +1,43 @@
+method: random
+
+metric:
+  goal: minimize
+  name: loss_val
+
+parameters:
+  data_example_len:
+    values: [100, 1000, 10000]
+  data_test_size:
+    value: 0.2
+  data_valid_size:
+    value: 0.15
+  data_shift:
+    values: [1, 5, 10]
+
+  model_reservoir_size:
+    values: [20, 50, 100, 200]
+  model_decay:
+    values: [.1, .2, 0.5, .7, 1]
+
+  # STDP_steps_scope: (int). Last steps to consider for STDP spike collection
+  STDP_steps_scope:
+    values: [10, 20, 50]
+  STDP_A_minus:
+    values: [.1, 0.2, .5]
+  STDP_A_plus:
+    values: [.1, 0.2, .5]
+  STDP_tau_plus:
+    values: [1.e-3, 5.e-3, 1.e-2, 1.e-1, 5.e-1, 1]
+  STDP_tau_minus:
+    values: [1.e-3, 5.e-3, 1.e-2, 1.e-1, 5.e-1, 1]
+
+
+  # Here we measure the performance distribution of many trials, since
+  # the randomicity of the initialization may alter the performance.
+
+  # n_trials: (int).
+  exp_n_trials:
+    values: [5]
+  # n_STDP_steps: (int). How many times apply the STDP per each time step
+  exp_n_STDP_steps:
+    values: [5]

@@ -42,8 +42,9 @@ plotly = "^5.14.1"
 # dvc = "^3.2.1"
 # dvclive = "^2.12.0"
 wandb = "^0.15.5"
+opencv-python = "^4.8.0.74"
+dataframe-image = "^0.2.2"
 mdutils = "^1.6.0"
-dataframe-image = "^0.2.1"
 
 [tool.poetry.dev-dependencies]
 autopep8 = "^2.0.0"
@@ -52,6 +53,10 @@ jupyter = "^1.0.0"
 black = "^22.8.0"
 streamlit = "*"
 watchdog = "*"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.2"
+isort = "^5.12.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.8"]

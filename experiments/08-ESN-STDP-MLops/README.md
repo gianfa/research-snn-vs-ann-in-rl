@@ -1,7 +1,5 @@
 # Forecast of Lorenz signal with ESN \[Sketch\]
 
-This is a rearrangement of exp 07 according to MLOps to allow better debuggability.
-
 - [Evaluation](#evaluation)
 - [References](#references)
 

@@ -1,0 +1,29 @@
+LIF_I_connections:
+  gain: 0.5
+  input_to_reservoir: 10
+LIF_LIF_connections:
+  degree: 4
+  enable_dyn_synapses: true
+  gain: 0.5
+  radius: 20
+  syn_decay_rate: 0.25
+  syn_decay_rate_dist: uniform
+  syn_initial_conductance: 1
+  weigths_dist: normal
+net:
+  base_input_current_gain: 0
+  base_input_current_type: noisy
+  input_size: 1
+  neuron_learn_beta: true
+  neuron_learn_threshold: false
+  output_size: 3
+  reservoir_size: 50
+optim:
+  lr: 0.05
+readout_LIF_connections:
+  reservoir_output_n: 10
+training:
+  buffer_capacity: 250
+  epochs: 1
+  loss_scope: 250
+  washout_time: 1000

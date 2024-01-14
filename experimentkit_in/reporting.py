@@ -28,7 +28,19 @@ class ReportMD():
             f.write(txt_)
         return
     
+    def add_code(self, txt: str, language: str, new_line: bool = True) -> None:
+        txt_ = "\n".join([
+            f"```{language}",
+            txt,
+            "```"
+        ])
+        self.add_txt(txt_)
+        return
+    
     def write_title(self, title: str) -> None:
+        if title is None:
+            raise ValueError("A title must be provided")
+
         with open(self.md_path, 'r') as f:
             for line in f.readlines():
                 line_ = line.replace("\n", "").strip()

@@ -1,3 +1,4 @@
+
 # Forecast of Lorenz signal with ESN \[Sketch\]
 
 - [Framing the problem](#framing-the-problem)
@@ -6,9 +7,9 @@
   - [Data Generation](#data-generation)
   - [The model definition](#the-model-definition)
   - [The experiment](#the-experiment)
-    - [Classical ESN training](#classical-esn-training)
+    - [Classical ESN training.](#classical-esn-training)
     - [Optimisation of Reservoir weights](#optimisation-of-reservoir-weights)
-    - [Scheme](#scheme)
+  - [Scheme](#scheme)
 - [Evaluation](#evaluation)
 - [References](#references)
 - [Results](#results)
@@ -63,7 +64,7 @@ Let us take an example. We will conduct `n_trials` trials, with `n_trials` being
 
 In total, around 360 experiments were therefore carried out, each consisting of 50 trials.
 
-#### Classical ESN training
+#### Classical ESN training.
 
 The ESN was trained according to the solution discussed in  [4.4 Direct Pseudoinverse Solution, LUKOŠEVIČIUS et al., 2012](#references).
 
@@ -114,20 +115,19 @@ end
 
 In order to evaluate the performance of the model, the following metrics, implemented in scikit-learn, were adopted in cross validation.
 
-- [mean_absolute_error](https://scikit-learn.org/stable/modules/generated/sklearn.metrics.mean_absolute_error.html#sklearn.metrics.mean_absolute_error). The lower the better.
-- [mean_squared_error](https://scikit-learn.org/stable/modules/generated/sklearn.metrics.mean_squared_error.html). The lower the better.
-- [r2_score](https://scikit-learn.org/stable/modules/generated/sklearn.metrics.r2_score.html) (coefficient of determination, $R^2$ ). The higher the better. It is a computationally robust version, for which perfect predictions score 1 and imperfect predictions score 0.  
-$$
-R^2(y, \hat{y})=1-\frac{ \sum^{n}_{i=1} (y_i - \hat{y_i})^2}{\sum^{n}_{i=1} (y_i - \bar{y_i})^2}
+* [mean_absolute_error](https://scikit-learn.org/stable/modules/generated/sklearn.metrics.mean_absolute_error.html#sklearn.metrics.mean_absolute_error). The lower the better.
+* [mean_squared_error](https://scikit-learn.org/stable/modules/generated/sklearn.metrics.mean_squared_error.html). The lower the better.
+* [r2_score](https://scikit-learn.org/stable/modules/generated/sklearn.metrics.r2_score.html) (coefficient of determination, $R^2$ ). The higher the better. It is a computationally robust version, for which perfect predictions score 1 and imperfect predictions score 0.  
 $$
 
+R^2(y, \hat{y})=1-\frac{ \sum^{n}_{i=1} (y_i - \hat{y_i})^2}{\sum^{n}_{i=1} (y_i - \bar{y_i})^2}
+$$
 
 ## References
 
 1. https://scikit-learn.org
 2. [LUKOŠEVIČIUS, Mantas. A practical guide to applying echo state networks.
      Neural Networks: Tricks of the Trade: Second Edition, 2012, 659-686.](https://www.ai.rug.nl/minds/uploads/PracticalESN.pdf)
-
 
 ## Results
 
@@ -136,6 +136,7 @@ For convenience, MSE and R2 have been reported as performance metrics, but it wo
 
 The results are summarised here.  
 Performance shows a slight improvement after the application of STDP, appreciable
+
 - as the number of STDP steps increases (mainly supported by r2); 
 - as the STDP scope increases (again mainly supported by r2).
 
@@ -152,7 +153,6 @@ Performance shows a more marked improvement after the application of STDP, appre
 
 <img src='./data/exp-example_len-shift-n_STDP_steps-STDP_scope/results/comparison-r2_vs_example_len.png' ><br>
 <img src='./data/exp-example_len-shift-n_STDP_steps-STDP_scope/results/comparison-mse_vs_example_len.png' ><br> 
-
 
 ### Notes
 
