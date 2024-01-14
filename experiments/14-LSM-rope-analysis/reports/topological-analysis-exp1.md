@@ -1,6 +1,7 @@
 # Topological Analysis - Exp1
 
 ## Contents
+
 - [Contents](#contents)
   - [The Signal](#the-signal)
 - [The Network](#the-network)
@@ -16,6 +17,7 @@
 - [Back to LSM Topological Analysis](#back-to-lsm-topological-analysis)
 
 ### The Signal
+
 The signal on which the network was trained consists of a constant baseline and alternating fragments whose frequency can be one of two possible
 
 ## The Network
@@ -26,36 +28,34 @@ The neural network is a Liquid State Machine (LSM) \[Maas, 2002\], with the foll
 
 ### The Reservoir
 
-* Total number of neurons: 20
-* Number of input neurons: 10
-* Number of output neurons: 10
-* Weights values randomly assigned (Normal)
-* Synaptic connections with decay
-   * Randomly distributed (Normal)
-   * decay function: $g[t+1] = q \cdot g[t]$, with $g$ synaptic gain (conductance) and $q \in [0, 1]$ decay rate.
-   * decay rate: .25
+- Total number of neurons: 20
+- Number of input neurons: 10
+- Number of output neurons: 10
+- Weights values randomly assigned (Normal)
+- Synaptic connections with decay
+  - Randomly distributed (Normal)
+  - decay function: $g[t+1] = q \cdot g[t]$, with $g$ synaptic gain (conductance) and $q \in [0, 1]$ decay rate.
+  - decay rate: .25
 
 ### The Readout
 
 Fully connected layer.
-* Number of neurons equal to the number of categories to classify
+- Number of neurons equal to the number of categories to classify
 
 ## The Training
 
-* Optimizer: Adam \[Kigma, 2014\]
-* Loss based on CrossEntropy
+- Optimizer: Adam \[Kigma, 2014\]
+- Loss based on CrossEntropy
 
 At each training step the network receives a signal element.
 The network subsequently completes an entire propagation step between the layers until a prediction is reached.  
 A buffer of a specific size, sequentially collects a specific amount of network outputs.
 
-
-
 Given:  
-* [signal](#the-signal) $s[n] \in \mathbb{R} : \{s[0], .., s[N]\}$, a discrete time input, $T$ seconds long and with $r_s$ sampling rate;
-* $y \in Y \subset \mathbb{N}$, with $Y: \{0, c_1, .., c_C\}$ and $y:\{y_0, ..., y_N\}$, being a vector of integer labels, containing labels equal to 1 + $C$ categories. Where ncategories is the number of categories to be classified, excluding the baseline category, corresponding to everything that is not such categories. In our case the signal baseline.
-* a [Liquid State Machine](#the-network) [Maas, 2002], made by a Liquid Filter (reservoir) $R$, a Readout $f$. It is supposed to learn a mapping between $s$ and $y$, returning a $\hat{y}_i$. We'll refer to the whole of it as a $Z$.
-* $\hat{y} \in Y$, $\hat{y}:\{\hat{y}_0, ..., \hat{y}_N\}$, vector of integer labels, returned by the LSM Readout, $f$. $\hat{y}=Z(s[n])$
+- [signal](#the-signal) $s[n] \in \mathbb{R} : \{s[0], .., s[N]\}$, a discrete time input, $T$ seconds long and with $r_s$ sampling rate;
+- $y \in Y \subset \mathbb{N}$, with $Y: \{0, c_1, .., c_C\}$ and $y:\{y_0, ..., y_N\}$, being a vector of integer labels, containing labels equal to 1 + $C$ categories. Where ncategories is the number of categories to be classified, excluding the baseline category, corresponding to everything that is not such categories. In our case the signal baseline.
+- a [Liquid State Machine](#the-network) [Maas, 2002], made by a Liquid Filter (reservoir) $R$, a Readout $f$. It is supposed to learn a mapping between $s$ and $y$, returning a $\hat{y}_i$. We'll refer to the whole of it as a $Z$.
+- $\hat{y} \in Y$, $\hat{y}:\{\hat{y}_0, ..., \hat{y}_N\}$, vector of integer labels, returned by the LSM Readout, $f$. $\hat{y}=Z(s[n])$
 
 
 At each time step, $n_i$, the network, $Z$, receives a $s[n_i]$ element which is processed in one step by the whole network, until it returns a $\hat{y_i}$. 
@@ -91,11 +91,13 @@ FOR each ni from 0 to s_length - 1 DO:
 ```
 
 ## Experiment
+
 After researching the most important hyperparameters,
-we chose a configuration to analyze.  
-* reservoir_size: 20,
-* radius: 4,
-* degree in \{2, 3\}.
+we chose a configuration to analyze.
+
+- reservoir_size: 20,
+- radius: 4,
+- degree in \{2, 3\}.
 
 Comprehensive training was repeatedly launched and performance was collected.  
 
@@ -105,6 +107,7 @@ The performance metrics chosen here is the average prediction accuracy in the la
 
 
 ## Visualization
+
 Below we see a representation of the average performance obtained by connection position on the adjacency matrix.
 
 <img src='./topological_analysis/perf_x_pos-mean.png'>
