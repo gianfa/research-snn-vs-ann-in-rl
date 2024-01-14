@@ -1,9 +1,23 @@
+[project]
+name = "research-snn-vs-ann-in-rl"
+version = "0.1.0"
+
+
 [tool.poetry]
 name = "research-snn-vs-ann-in-rl"
 version = "0.1.6a1"
 description = "Comparison of economics of choices between SNN and ANN in RL"
 authors = ["gianfa <gian.angelini@hotmail.com>"]
-packages = [{include = "stdp"}]
+packages = [
+    {include = "stdp"},
+    {include = "experimentkit"},
+]
+exclude = [
+    "flows",
+    "experiments",
+    "streamlit_apps",
+]
+
 
 [tool.poetry.dependencies]
 python = ">=3.9,<3.9.7 || >3.9.7,<3.11"
@@ -40,3 +54,15 @@ watchdog = "*"
 [build-system]
 requires = ["poetry-core>=1.0.8"]
 build-backend = "poetry.core.masonry.api"
+
+
+# [build-system]
+# # https://pip.pypa.io/en/stable/reference/build-system/pyproject-toml/#build-process
+# requires = ["setuptools>=40.8.0", "wheel"]
+# build-backend = "setuptools.build_meta:__legacy__"
+
+# [tool.setuptools]
+# packages = [
+#     "std",
+#     "experimentkit"
+# ]
