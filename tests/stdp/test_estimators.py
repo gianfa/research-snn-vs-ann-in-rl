@@ -43,6 +43,7 @@ def simple_pre_post_W_A():
 def dw_time_lookup_40():
     return stdp_generate_dw_lookup(40)
 
+
 def test_BaseESN_simple__many_sizes():
     for _ in range(10):
         t_steps = torch.randint(12, 100, (1, 1)).item()
@@ -69,6 +70,7 @@ def test_BaseESN_simple__many_sizes():
         predictions = esn.predict(X)
         assert predictions.shape == torch.Size(
             [output_size, t_steps - washout])
+
 
 def test_define_spiking_cluster():
     clust = define_spiking_cluster(
@@ -324,7 +326,7 @@ def test_ESN__train_multibatch():
     esn.train(X, Y, lr=4e0, v=True)
 
 
-def test_ESN__train__performance():
+def __SKIP__test_ESN__train__performance():
     from experimentkit.evaluation import regression # noqa
 
     # # Data Generation

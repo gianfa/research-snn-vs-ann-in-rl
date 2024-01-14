@@ -1,0 +1,23 @@
+program: 03-Forecast-Lorenz-perf_wrt_signal_shift_wandb.py
+method: grid
+parameters:
+  # data
+  example_len:
+    values: [100, 1000, 10000]
+  shift:
+    values: [1, 3, 5, 7, 9, 11, 13, 15, 17, 19]
+  
+  # model
+  reservoir_size:
+    values: [5, 10, 20, 50, 100, 200]
+  # STDP
+  n_STDP_steps:
+    values: [2, 4, 6, 8, 10, 12, 14, 16, 18]
+  STDP_scope:
+    values: [10, 20, 30]
+  
+  # experiment
+  n_trials:
+    values: [10]
+  
+

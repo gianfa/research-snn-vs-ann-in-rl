@@ -52,10 +52,10 @@ from experimentkit_in.reporting import ReportMD
 from stdp.estimators import BaseESN
 from stdp import funx as stdp_f
 
-import src07.funx as src07_f
+# import src07.funx as src07_f
 
 # %%
-ROOT = Path('../../../')
+ROOT = Path('/home/gianfrancesco/github/research-snn-vs-ann-in-rl')
 DATA_DIR = ROOT/'data'
 EXP_DIR = ROOT/'experiments/07-ESN-STDP'
 EXP_DATA_DIR = EXP_DIR/'data'
@@ -72,6 +72,7 @@ FROM_WANDB = True
 assert ROOT.resolve().name == 'research-snn-vs-ann-in-rl'
 assert EXP_DIR.exists(), \
 f"CWD: {Path.cwd()}\nROOT: {ROOT.absolute()}"
+# %%
 
 recompute = False
 report_path = EXP_REPORT_DIR/(str(EXP_NAME) + ".md")
@@ -85,29 +86,9 @@ reporter = ReportMD(report_path, f"# {EXP_NAME}")
 
 
 # %% Training
-
-params = {
-'data': {
-    'example_len': 10000,
-    'test_size': 0.2,
-    'valid_size': 0.15,
-    'shift': 10
-},
-'experiment': {
-    'n_trials': 50,
-    'n_STDP_steps': 5,
-},
-'model': {
-    'reservoir_size': 100,
-    'STDP_scope': 20,
-}
-}
-
-exp_id = 'exp_len_shift_STDPsteps_scope'
-
 grid_params_names = ['shift', 'example_len', 'n_STDP_steps', 'STDP_scope']
 
-# %% Plot Performance comparison before/after. boxplots
+# %% Load Performance data
 
 perf = pd.DataFrame()  # := (n_trial, scores)
 delta_perf = pd.DataFrame()  # := (scores)
@@ -160,13 +141,13 @@ for i, exp_dir in enumerate((SUBEXP_PROD_DATA).iterdir()):
     except Exception as e:
         print(f"{exp_dir}: {e}")
 
-pickle_save_dict(
-    SUBEXP_RESULTS_DIR/f"comparison-perf.pkl",
-    {'perf': perf})
+# pickle_save_dict(
+#     SUBEXP_RESULTS_DIR/f"comparison-perf.pkl",
+#     {'perf': perf})
 
-pickle_save_dict(
-    SUBEXP_RESULTS_DIR/f"comparison-delta_errors.pkl",
-    {'delta_perf': delta_perf})
+# pickle_save_dict(
+#     SUBEXP_RESULTS_DIR/f"comparison-delta_errors.pkl",
+#     {'delta_perf': delta_perf})
 
 
 # %% boxplot before vs after, removing outliers
@@ -181,7 +162,7 @@ for m_name in ['r2', 'mse']:
         img_path = SUBEXP_RESULTS_DIR/f"comparison-{m_name}_vs_{param_name}.png"
         fig.savefig(img_path)
         img_tag_md = f'<img src="{img_path}">'
-        src07_f.report_md_append(f"\n\n\n\n{img_tag_md}", report_path)
+        # src07_f.report_md_append(f"\n\n\n\n{img_tag_md}", report_path)
 
 # %% FaceGrid, boxplot before vs after, removing outliers
 
@@ -195,7 +176,7 @@ fig = plt.gcf()
 img_path = SUBEXP_RESULTS_DIR/f"comparison-stratif-mse_vs_STDP_scope_by_{compby}.png"
 fig.savefig(img_path)
 img_tag_md = f'<img src="{img_path}">'
-src07_f.report_md_append(f"\n\n{img_tag_md}", report_path)
+# src07_f.report_md_append(f"\n\n{img_tag_md}", report_path)
 
 
 compby = "example_len"
@@ -207,7 +188,7 @@ fig = plt.gcf()
 img_path=SUBEXP_RESULTS_DIR/f"comparison-stratif-mse_vs_STDP_scope_by_{compby}.png"
 fig.savefig(img_path)
 img_tag_md = f'<img src="{img_path}">'
-src07_f.report_md_append(f"\n\n{img_tag_md}", report_path)
+# src07_f.report_md_append(f"\n\n{img_tag_md}", report_path)
 
 compby = "n_STDP_steps"
 g = sns.FacetGrid(perf, col=compby, col_wrap=3, sharey=False)
@@ -218,7 +199,7 @@ fig = plt.gcf()
 img_path = SUBEXP_RESULTS_DIR/f"comparison-stratif-mse_vs_STDP_scope_by_{compby}.png"
 fig.savefig(img_path)
 img_tag_md = f'<img src="{img_path}">'
-src07_f.report_md_append(f"\n\n{img_tag_md}", report_path)
+# src07_f.report_md_append(f"\n\n{img_tag_md}", report_path)
 
 # %% FaceGrid, boxplot before vs after, mse vs shift by STDP_scope = 10
 
@@ -338,7 +319,7 @@ else:
 
 U_results = pd.DataFrame(U_results)
 
-# %%
+# %%  Plot delta of single runs
 fig, ax = plt.subplots()
 sns.histplot(delta_single_run, fill=False, ax=ax)
 ax.axvline(1, color='grey')

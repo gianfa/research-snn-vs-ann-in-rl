@@ -8,6 +8,7 @@
   - [The experiment](#the-experiment)
     - [Classical ESN training.](#classical-esn-training)
     - [Optimisation of Reservoir weights](#optimisation-of-reservoir-weights)
+    - [Scheme](#scheme)
 - [Evaluation](#evaluation)
 - [References](#references)
 - [Results](#results)
@@ -87,6 +88,25 @@ The following steps are addressed during optimisation:
 4. Every second STDP step the weights are attenuated and some noise is added to them.
 5. The ESN is trained with these optimised Reservoir weights.
 6. Finally, the ESN is evaluated.
+
+### Scheme
+
+```mermaid
+graph TD
+
+subgraph A[A]
+    C[C]
+end
+
+subgraph B[B]
+    D[D]
+end
+
+  A -->|Collegamento| B
+  A -->|ntrials| ntrials_A["ntrials"]
+  B -->|ntrials| ntrials_B["ntrials"]
+
+```
 
 ## Evaluation
 

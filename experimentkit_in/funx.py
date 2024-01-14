@@ -12,6 +12,7 @@ from typing import Dict
 import torch
 import yaml
 
+
 def compare_sample_from_data(
     data: torch.Tensor,
     y_true: torch.Tensor,

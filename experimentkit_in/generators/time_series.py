@@ -256,7 +256,6 @@ def gen_lorenz(
 
 # %%
 
-
 def duffing(
         t, X,
         alpha: float = 1,
@@ -306,7 +305,6 @@ def gen_duffing(
     --------
     >>> import matplotlib.pyplot as plt
     >>> x, v = gen_duffing()
-    >>> x, v = gen_duffing()
     >>> plt.figure(figsize=(6, 6))
     >>> plt.plot(x, v, label='Phase plane')
     >>> plt.xlabel('x')
@@ -317,12 +315,7 @@ def gen_duffing(
     sol = integrate.solve_ivp(
         duffing,
         t_span, X0, t_eval=np.linspace(t_span[0], t_span[1], n_steps),
-        args = (alpha, beta, gamma, delta, omega))
+        args=(alpha, beta, gamma, delta, omega))
 
-    return sol.y
+    return sol.y.T
 
-
-
-
-
-# %%

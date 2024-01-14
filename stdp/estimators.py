@@ -171,7 +171,7 @@ class ESN(nn.Module):
             [self.__call__(
             Xi.unsqueeze(0).to(torch.float32)).detach()
                 for Xi in X]).squeeze()
-        
+
 
 class BaseESN(nn.Module):
     """Base Echo State Netowrk
@@ -192,8 +192,8 @@ class BaseESN(nn.Module):
         _description_, by default 0.3
     decay : float, optional
         _description_, by default 1
-    
-        
+
+ 
     References
     ----------
     1. LUKOŠEVIČIUS, Mantas. A practical guide to applying echo state networks.
@@ -209,14 +209,14 @@ class BaseESN(nn.Module):
             connectivity: float = 0.3,
             decay: float = 1,
             washout: int = 0,
-        ):
+    ):
         self.input_size = input_size
         self.reservoir_size = reservoir_size
         self.output_size = output_size
         self.spectral_radius = spectral_radius
         self.connections = connections
         self.connectivity = connectivity
-        self.decay =  decay
+        self.decay = decay
         self.washout = washout
 
         # Weights initialization
@@ -235,7 +235,7 @@ class BaseESN(nn.Module):
             # mask = generate_simple_circle_connections_mask(
             #     (reservoir_size, reservoir_size))
             print(self.connections.shape)
-        
+
         self.W *= self.connections
 
         # spectral radius
@@ -244,10 +244,10 @@ class BaseESN(nn.Module):
         self.W /= max_eigenvalue / spectral_radius
 
     def train(
-            self,
-            inputs: torch.Tensor,
-            targets: torch.Tensor
-        ) -> torch.Tensor:
+        self,
+        inputs: torch.Tensor,
+        targets: torch.Tensor
+    ) -> torch.Tensor:
         """Train the ESN
 
         Parameters
@@ -276,7 +276,7 @@ class BaseESN(nn.Module):
             X_temp = torch.tanh(
                 torch.matmul(self.W_in, inputs[:, t]) +
                 torch.matmul(self.W, X[:, t-1].T))
-            
+
             X[:, t] = (1. - self.decay) * X[:, t -1] + self.decay * X_temp
 
         # [Lukoˇseviˇcius, 2012, eq. 4]
@@ -292,24 +292,23 @@ class BaseESN(nn.Module):
     def predict(self, inputs: torch.Tensor):
         X = torch.zeros((self.reservoir_size, inputs.shape[1])).float()
 
-         # Reservoir Feedforward
+        # Reservoir Feedforward
         for t in range(1, inputs.shape[1]):
             # [Lukoˇseviˇcius, 2012, eqs. 2,3]
             X_temp = torch.tanh(
                 torch.matmul(self.W_in, inputs[:, t]) +
                 torch.matmul(self.W, X[:, t-1].T))
-            
+
             X[:, t] = (1. - self.decay) * X[:, t -1] + self.decay * X_temp
 
         # Apply the washout
         X = X[:, self.washout:]
-    
+
         # Output prediction  [=] (Ny)
         concat_mat = torch.vstack((inputs[:, self.washout:], X))
         predictions = torch.matmul(self.W_out, concat_mat)
         return predictions
         # print(inputs.shape, X.shape, self.reservoir_size)
-
 
 
 

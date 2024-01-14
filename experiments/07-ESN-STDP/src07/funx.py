@@ -17,7 +17,7 @@ from sklearn.model_selection import train_test_split
 import yaml
 
 from experimentkit_in.funx import pickle_save_dict, pickle_load
-from experimentkit_in.generators.time_series import gen_lorenz
+from experimentkit_in.generators.time_series import gen_lorenz, gen_duffing
 from experimentkit_in.visualization import get_cmap_colors
 
 def load_yaml(): ...
@@ -34,9 +34,9 @@ def argparse_config():
 
 def evaluate_regression_report(y_true, y_pred):
     return dict(
-        mse = mean_squared_error(y_true, y_pred),
-        mae = mean_absolute_error(y_true, y_pred),
-        r2 = r2_score(y_true, y_pred)
+        mse=mean_squared_error(y_true, y_pred),
+        mae=mean_absolute_error(y_true, y_pred),
+        r2=r2_score(y_true, y_pred)
     )
 
 def plot_evaluate_regression_report(
@@ -65,18 +65,18 @@ def plot_evaluate_regression_report(
 ## EXP ##
 
 def expt_generate_new_lorenz_data(
-    example_len = 10000,
-    test_size = 0.2,
-    valid_size = 0.15,
-    recompute = False,
-    ds_path = None,
-    shift = 12,  # forecasted delay
-    s = 12, r = 30, b = 2.700,
-    time_last = True, # put time dimension as last
+    example_len=10000,
+    test_size=0.2,
+    valid_size=0.15,
+    recompute=False,
+    ds_path=None,
+    shift=12,  # forecasted delay
+    s=12, r=30, b=2.700,
+    time_last=True,  # put time dimension as last
     v: bool = False
 ):
     if shift < 1:
-        raise Exception(f"shift must be greater than 1!")
+        raise Exception("shift must be greater than 1!")
 
     ds_path = Path(ds_path)
     if ds_path.exists() and not recompute:
@@ -89,8 +89,64 @@ def expt_generate_new_lorenz_data(
     y = ds[shift:, 0]
 
     v and print(X.shape, y.shape)
+
     assert X.shape[0] == y.shape[0], f"{X.shape}[0] != {y.shape}[0]"
 
+    return prepare_data(
+        X, y,
+        test_size=test_size,
+        valid_size=valid_size,
+        time_last=time_last,  # put time dimension as last
+        v=v
+    )
+
+
+def expt_generate_new_duffing_data(
+    example_len=10000,
+    test_size=0.2,
+    valid_size=0.15,
+    recompute=False,
+    ds_path=None,
+    shift=12,  # forecasted delay
+    alpha=1, beta=-1, gamma=0.5, delta=0.3, omega=1,
+    time_last=True,  # put time dimension as last
+    v: bool = False
+):
+    if shift < 1:
+        raise Exception("shift must be greater than 1!")
+
+    ds_path = Path(ds_path)
+    if ds_path.exists() and not recompute:
+        ds = pickle_load(ds_path)
+    else:
+        ds = gen_duffing(
+            n_steps=example_len,
+            alpha=alpha, beta=beta, gamma=gamma, delta=delta, omega=omega)
+        pickle_save_dict(ds_path, ds)
+
+    X = ds[:-shift]
+    y = ds[shift:, 0]
+
+    v and print(X.shape, y.shape)
+
+    assert X.shape[0] == y.shape[0], f"{X.shape}[0] != {y.shape}[0]"
+
+    return prepare_data(
+        X, y,
+        test_size=test_size,
+        valid_size=valid_size,
+        time_last=time_last,  # put time dimension as last
+        v=v
+    )
+
+
+def prepare_data(
+    X, y,
+    test_size=0.2,
+    valid_size=0.15,
+    time_last=True,  # put time dimension as last
+    v: bool = False
+):
     # train/test split
 
     X_train, X_test, y_train, y_test = \
@@ -216,3 +272,10 @@ def plot_compare_df_via_boxplot(
     if ylim:
         ax.set_ylim(ylim)
     return ax
+
+
+## Report ##
+
+def report_md_append(txt: str, md_path:str):
+    with open(md_path, 'a+') as f:
+        f.write(txt)

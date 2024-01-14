@@ -22,6 +22,7 @@ import matplotlib.pyplot as plt  # noqa
 
 from tut_utils import *  # noqa
 
+
 def latek_from_tensor(tensor):
     if tensor.ndim > 2:
         raise ValueError("tensor must be 2D")
