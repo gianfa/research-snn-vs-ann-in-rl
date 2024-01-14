@@ -1,7 +1,7 @@
 # 2nd Gen. timeseries Classification
 
-Description
------------
+## Description
+
 We want to classify the original phases of a given signal.
 X -> RNN -> y
 
