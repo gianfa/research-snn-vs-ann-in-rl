@@ -7,4 +7,4 @@ A few examples of experiments with preliminary results can be found at the follo
 
 - [Forecast of Lorenz signal with ESN](./07-ESN-STDP/README.md)
 - [LSTM Anomaly Detector](./11-LSTM/README.md)
-- [Topological Analysis of SNN](./14-LSM-rope-analysis/README.md)
+- [LSM Topological Analysis](../docs/LSM-topological_analysis.md)
