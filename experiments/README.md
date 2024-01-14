@@ -6,4 +6,4 @@ They may be incomplete, since they are experiments done during the work and most
 A few examples of experiments with first results can be found at the following folders:
 
 - [Forecast of Lorenz signal with ESN](./07-ESN-STDP/README.md)
-- 
+- [LSTM Anomaly Detector](./11-LSTM/README.md)
