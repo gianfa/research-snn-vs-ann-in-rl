@@ -1,6 +1,7 @@
 wandb
 .conda*
 # github repos
+*-hidden*
 *gh-*
 *-hidden*
 *-ignore*
@@ -17,6 +18,7 @@ poetry.lock
 
 **/data/*
 .vscode
+.conda*
 
 ######## MACOS  #######
 
