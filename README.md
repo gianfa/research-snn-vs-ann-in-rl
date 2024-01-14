@@ -19,7 +19,7 @@ What is contained here is mostly partial, collecting mostly notes about work in 
 
 ## Structure
 
-- *experimentkit/* is a library, convenience library that collects useful functions for creating research experiments.
+- *experimentkit/* is a convenience library that collects useful functions for creating research experiments.
 - *experiments/* collects experiments made during the work.
 - *stdp/* is a library that implements classes and functions related to the application of a simplified STDP algorithm, based on snnTorch.
 - *tests/* contains test functions for the libraries in this projects.
