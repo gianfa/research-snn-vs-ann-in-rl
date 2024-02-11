@@ -1,3 +1,4 @@
+from pathlib import Path
 import logging.config
 
 def setup_logger(
@@ -31,11 +32,14 @@ def setup_logger(
         }
     }
     if log_file:
+        log_file_ = Path(log_file)
+        assert log_file_.parent.exists()
+        assert not log_file_.is_dir(), "log_file must be a file path"
         config['handlers']['file'] = {
                 'class': 'logging.FileHandler',
                 'formatter': 'default',
                 'level': log_level,
-                'filename': log_file
+                'filename': log_file_
             }
         config['root']['handlers'].append('file')
     logging.config.dictConfig(config)
