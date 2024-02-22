@@ -65,13 +65,13 @@ from experimentkit_in.logger_config import setup_logger
 # %% Project Parameters
 
 
-RUN_PREFIX = f'15-trial-r2-d1'
+RUN_PREFIX = f'15-trial-NO-plastic'
 
 exp_outdata_dir = EXP_DATA_DIR/'experiments'
 data_path = EXP_DATA_DIR/"2-2freq_toy_ds-20000-1.pkl"
 description = "Performance Sampling vs radius and degree"
 
-n_samples = 100
+n_samples = 73
 
 for sample_i in range(n_samples):
     # Project setup
@@ -161,7 +161,7 @@ for sample_i in range(n_samples):
     #     reservoir_size, reservoir_size, degree=2)
 
     # topology: positions
-    conn_lif_lif_topology = src_15.topologies.gen_rope(
+    conn_lif_lif_topology = src_15.topologies.gen_soft_rope(
         reservoir_size, reservoir_size,
         radius=params['LIF_LIF_connections']['radius'],
         degree=params['LIF_LIF_connections']['degree'])
@@ -385,7 +385,10 @@ for sample_i in range(n_samples):
 
     ek.funx.pickle_save_dict(
         RUN_REPORT_DIR/"results.pkl",
-        {'acc_last_mean': acc_last_mean})
+        {
+            'acc_hist': acc_hist,
+            'acc_last_mean': acc_last_mean
+        })
 
     # Visualization
 

@@ -16,9 +16,9 @@ LIF_I_connections:
 LIF_LIF_connections:
   gain: .5
   weigths_dist: normal
-  radius: 2
-  degree: 1
-  enable_dyn_synapses: True
+  radius: 15
+  degree: 5
+  enable_dyn_synapses: False
   syn_initial_conductance: 1
   syn_decay_rate_dist: normal
   syn_decay_rate: .25
