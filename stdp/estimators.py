@@ -209,6 +209,8 @@ class BaseESN(nn.Module):
             connectivity: float = 0.3,
             decay: float = 1,
             washout: int = 0,
+            input_W_scale: float = 2.0,
+            reservoir_W_scale: float = 2.0,
         ):
         self.input_size = input_size
         self.reservoir_size = reservoir_size
@@ -225,8 +227,8 @@ class BaseESN(nn.Module):
         self.W_out = None
 
         # Weights scaling
-        self.W_in *= 2.0
-        self.W *= 2.0
+        self.W_in *= input_W_scale
+        self.W *= reservoir_W_scale
 
         if self.connections is None:
             # Random connection in reservoir
