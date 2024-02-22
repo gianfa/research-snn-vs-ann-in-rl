@@ -1,3 +1,4 @@
+
 # Forecast of Lorenz signal with ESN \[Sketch\]
 
 
@@ -15,13 +16,14 @@
   - [TODO](#todo)
   - [RQ](#rq)
 
-
 ## Framing the problem
 
 The problem is framed as forecasting a chaotic signal.
 
 ### Research Questions
+
 In this paper, the following research questions were formulated:
+
 1. RQ1: Can a simplified STDP mechanism be used as a weight optimiser in a second-generation network?
 2. RQ2: Do any situations exist in which such an optimisation mechanism brings about performance improvements?
 
@@ -36,10 +38,12 @@ The dataset is then further divided into *training*, *validation* and *test* set
 
 
 ### The model definition
+
 A Echo State Network (ESN) is defined, with the following parameters: the input size will be equal to the size of a generated Lorenz example; the same applies to the output size and labels; while the Reservoir size remains a free parameter, to be specified according to the experiment specifications.
 
 
 ### The experiment
+
 Several classical training trials of an NGE were carried out, with subsequent re-training following optimisation of the initial weights.
 All this was carried out as certain parameters changed, according to the following grid.  
 | parameter | values |
@@ -56,6 +60,7 @@ Where `example_len` is the length of a single example, which in fact corresponds
 Each run of the trials follows two main phases: one of classical ESN training, and a second in which the Reservoir weights are optimised using the simplified STDP.
 
 Let us take an example. We will conduct `n_trials` trials, with `n_trials` being an integer greater than zero. For each trial you will have:
+
 1. classical ESN training
 2. optimisation of Reservoir weights with simplified STDP
 
@@ -63,6 +68,7 @@ In total, around 360 experiments were therefore carried out, each consisting of 
  
 
 #### Classical ESN training.
+
 The ESN was trained according to the solution discussed in  [4.4 Direct Pseudoinverse Solution, LUKOŠEVIČIUS et al., 2012](#references).
 
 $$W^{out}=Y^{target}X^+$$
@@ -75,9 +81,10 @@ Since the Reservoir weights are fixed, once initialised, the optimisation of the
 The ESN goes into this phase immediately after being trained and evaluated in the first phase (classical training). This will later allow performance to be compared, since the dataset will be the same.
 
 The main parameters in this phase are:
-* the number of STDP steps, `n_STDP_steps`;
-* the maximum number of steps within which to apply the spike collection, `STDP_scope`;
-* the threshold for spike identification, `th`.
+
+- the number of STDP steps, `n_STDP_steps`;
+- the maximum number of steps within which to apply the spike collection, `STDP_scope`;
+- the threshold for spike identification, `th`.
 
 The following steps are addressed during optimisation:
 
@@ -91,10 +98,12 @@ The following steps are addressed during optimisation:
 ## Evaluation
 
 In order to evaluate the performance of the model, the following metrics, implemented in scikit-learn, were adopted in cross validation.
+
 * [mean_absolute_error](https://scikit-learn.org/stable/modules/generated/sklearn.metrics.mean_absolute_error.html#sklearn.metrics.mean_absolute_error). The lower the better.
 * [mean_squared_error](https://scikit-learn.org/stable/modules/generated/sklearn.metrics.mean_squared_error.html). The lower the better.
 * [r2_score](https://scikit-learn.org/stable/modules/generated/sklearn.metrics.r2_score.html) (coefficient of determination, $R^2$ ). The higher the better. It is a computationally robust version, for which perfect predictions score 1 and imperfect predictions score 0.  
 $$
+
 R^2(y, \hat{y})=1-\frac{ \sum^{n}_{i=1} (y_i - \hat{y_i})^2}{\sum^{n}_{i=1} (y_i - \bar{y_i})^2}
 $$
 
@@ -137,6 +146,7 @@ Performance shows a more marked improvement after the application of STDP, appre
 ### Notes
 
 ### TODO
+
 - v track eigenvalues during STDP
 - v visualize evolution vs weights/eigenvalues
 - visualize
